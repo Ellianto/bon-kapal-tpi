@@ -6,7 +6,7 @@ class NavBar extends React.Component {
     render() {
         return (
             <nav className="navbar navbar-expand-md bg-light navbar-light fixed-top">
-                <a className="navbar-brand"> Bon Kapal TPI </a>
+                <h3 className="navbar-brand"> Bon Kapal TPI </h3>
 
                 <button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
                     <span className="navbar-toggler-icon"></span>
@@ -31,7 +31,7 @@ class ComboBox extends React.Component{
     render(){
         return(
             <select value = {this.props.value} id = {this.props.name} name = {this.props.name} className = {this.props.className} required onChange= {this.props.onChange} readonly>
-                {this.props.items.map((item, index) => {
+                {this.props.items.map((item) => {
                     return(
                         <option value={item.value} key={item.value}>
                             {item.text}
@@ -42,6 +42,7 @@ class ComboBox extends React.Component{
         );
     }
 }
+
 class TransactionPicker extends React.Component{
     constructor(props){
         super(props);
@@ -156,12 +157,13 @@ class AmountInput extends React.Component{
 class SubmitButton extends React.Component{
     render(){
         return(
-            <button type="submit" className = "btn btn-info btn-block btn-lg" onClick={this.props.onClick}> 
+            <button className = "btn btn-info btn-block btn-lg" onClick={this.props.onClick}> 
                 Konfirmasi
             </button>
         );
     }
 }
+
 
 class InputField extends React.Component{
     constructor(props){
@@ -317,8 +319,86 @@ class InputField extends React.Component{
         return years;
     }
 
-    handleSubmit(){
-        //TODO: Implement Cloud Firestore Writes (preferrably Transaction) here
+    handleSubmit(e){
+        e.preventDefault();
+
+        const thisDate  = this.state.newDay;
+        const thisMonth = this.state.newMonth;
+        const thisYear  = this.state.newYear;
+
+        const thisAmount= this.state.amount;
+
+        const newData = {
+            amount: thisAmount,
+            info : this.state.info,
+        };
+
+        const now = new Date();
+        const timeNow = firebase.firestore.Timestamp.fromDate(now);
+
+        const thisTrans = this.state.transaction;
+
+        const monthAlias = ['', 'jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'ags', 'sep', 'okt', 'nov', 'des'];
+
+        let rootPath = '';
+
+        if(thisTrans === 'pemasukan'){
+            rootPath = 'in';
+        } else {
+            rootPath = 'out';
+        }
+
+        const yearRef = firestore.collection(rootPath).doc(thisYear.toString());
+        const monthRef = yearRef.collection('month').doc(monthAlias[thisMonth]);
+        const dateRef = monthRef.collection('date').doc(thisDate.toString());
+        const newRef   = dateRef.collection('entry').doc();
+
+        firestore.runTransaction(async(transaction) => {
+            const yearDoc = await transaction.get(yearRef);
+            const monthDoc= await transaction.get(monthRef);
+            const dateDoc = await transaction.get(dateRef);
+
+            let yearSum = (yearDoc.exists ? yearDoc.data().sum  : 0) + thisAmount;
+            let monthSum= (monthDoc.exists? monthDoc.data().sum : 0) + thisAmount;
+            let dateSum = (dateDoc.exists ? dateDoc.data().sum  : 0) + thisAmount;
+
+            transaction.set(yearRef,{
+                sum : yearSum,
+                lastUp : timeNow,
+            }, {merge : true});
+
+            transaction.set(monthRef,{
+                sum : monthSum,
+                lastUp : timeNow,
+            }, {merge : true});
+
+            transaction.set(dateRef,{
+                sum : dateSum,
+                lastUp : timeNow,
+            }, {merge : true});
+
+            transaction.set(newRef, newData, { merge: true });
+           
+            return Promise.resolve(true);
+        }).then(() => {
+            alert("Data Berhasil Disimpan!");
+
+            this.state = {
+                transaction: 'pemasukan',
+                newDay: now.getDate(),
+                newMonth: now.getMonth() + 1,
+                newYear: now.getFullYear(),
+                info: '',
+                amount: 0,
+                arrays: {
+                    days: this.populateDays(now.getMonth() + 1, now.getFullYear(), false),
+                    months: this.populateMonths(),
+                    years: this.populateYears(now.getFullYear()),
+                }
+            };
+        }).catch((err) => {
+            console.error(err);
+        });
     }
 
     handleStringChange(e){
