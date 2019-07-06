@@ -1,5 +1,5 @@
 import React from 'react'
-import firebase, { firestore, firedb } from '../firebase.js';
+import {firestore} from '../firebase.js';
 
 import TransactionPicker from './TransactionPicker'
 import DatePicker from './DatePicker'
@@ -12,6 +12,7 @@ export default class InputForm extends React.Component {
         super(props);
 
         this.handleSubmit = this.handleSubmit.bind(this);
+        this.handleIntChange = this.handleIntChange.bind(this);
         this.handleStringChange = this.handleStringChange.bind(this);
         this.handleDateChange = this.handleDateChange.bind(this);
         this.handleMonthOrYearChange = this.handleMonthOrYearChange.bind(this);
@@ -165,7 +166,7 @@ export default class InputForm extends React.Component {
         const thisYear = this.state.newYear;
 
         const now = new Date();
-        const inputDate = new Date(thisYear, thisMonth, thisDate);
+        const inputDate = new Date(thisYear, thisMonth-1, thisDate);
 
         const timeOverflow = inputDate > now;
 
@@ -175,67 +176,86 @@ export default class InputForm extends React.Component {
         }
 
         const thisAmount = this.state.amount;
+        const timeNow = now.valueOf();
 
-        const newData = {
+        const newEntry = {
             amount: thisAmount,
             info: this.state.info,
+            lastUp : timeNow,
         };
 
-        const timeNow = firebase.firestore.Timestamp.fromDate(now);
-
         const thisTrans = this.state.transaction;
+        const isIncome = thisTrans === 'pemasukan';
 
-        const monthAlias = ['', 'jan', 'feb', 'mar', 'apr', 'mei', 'jun', 'jul', 'ags', 'sep', 'okt', 'nov', 'des'];
+        const refPath = ((thisYear * 10000) + (thisMonth * 100) + (thisDate)).toString();
+        const endPath = isIncome ? 'i' : 'o';
 
-        let rootPath = '';
+        const recentRef = firestore.collection('recent').doc('entry');
 
-        if (thisTrans === 'pemasukan') {
-            rootPath = 'in';
-        } else {
-            rootPath = 'out';
-        }
+        const aggregationRef = firestore.collection('aggr').doc(thisYear.toString());
 
-        const yearRef = firestore.collection(rootPath).doc(thisYear.toString());
-        const monthRef = yearRef.collection('month').doc(monthAlias[thisMonth]);
-        const dateRef = monthRef.collection('date').doc(thisDate.toString());
-        const newRef = dateRef.collection('entry').doc();
+        const dateRef = firestore.collection('data').doc(refPath);
+        const newRef = dateRef.collection(endPath).doc();
 
-        const firestore_transaction = firestore.runTransaction(async (transaction) => {
-            const yearDoc = await transaction.get(yearRef);
-            const monthDoc = await transaction.get(monthRef);
-            const dateDoc = await transaction.get(dateRef);
+        firestore.runTransaction(async (transaction) => {
 
-            let yearSum = (yearDoc.exists ? yearDoc.data().sum : 0) + thisAmount;
-            let monthSum = (monthDoc.exists ? monthDoc.data().sum : 0) + thisAmount;
-            let dateSum = (dateDoc.exists ? dateDoc.data().sum : 0) + thisAmount;
+            const [aggregationDoc, recentDoc, dateDoc] = await Promise.all([
+                transaction.get(aggregationRef), 
+                transaction.get(recentRef),
+                transaction.get(dateRef),
+            ]);
 
-            transaction.set(yearRef, {
-                sum: yearSum,
-                lastUp: timeNow,
-            }, { merge: true });
+            let aggregationValue;
 
-            transaction.set(monthRef, {
-                sum: monthSum,
-                lastUp: timeNow,
-            }, { merge: true });
+            if(aggregationDoc.exists){
+                aggregationValue = aggregationDoc.data();
+            } else {
+                let newArr = [];
 
-            transaction.set(dateRef, {
-                sum: dateSum,
-                lastUp: timeNow,
-            }, { merge: true });
+                for(let i = 0; i <= 13; i++){
+                    newArr.push({
+                        isum : 0,
+                        osum : 0,
+                    });
+                }
 
-            transaction.set(newRef, newData, { merge: true });
+                aggregationValue = {
+                    isum : 0,
+                    osum : 0,
+                    lastUp : 0,
+                    months : newArr,
+                };
+            }
+
+            let dateEntry = dateDoc.exists ? dateDoc.data() : { isum: 0, osum: 0, lastUp: 0 };
+            let recentArr = recentDoc.exists ? recentDoc.data().entries : [];
+
+            const newLength = recentArr.unshift({ ref: refPath + endPath, ...newEntry});
+
+            if (newLength > 10) {
+                recentArr.pop();
+            }
+
+            if(isIncome){
+                dateEntry.isum += thisAmount;
+                aggregationValue.isum += thisAmount;
+                aggregationValue.months[thisMonth].isum += thisAmount;
+            } else {
+                dateEntry.osum += thisAmount;
+                aggregationValue.osum += thisAmount;
+                aggregationValue.months[thisMonth].osum += thisAmount;
+            }
+
+            dateEntry.lastUp = timeNow;
+            aggregationValue.lastUp = timeNow;
+
+            transaction.set(aggregationRef, aggregationValue, {merge : true});
+            transaction.set(recentRef, {entries : recentArr}, {merge : true});
+            transaction.set(dateRef, dateEntry, {merge: true});
+            transaction.set(newRef, newEntry, {merge: true});
 
             return Promise.resolve(true);
-        });
-
-        const dbRef = ((thisYear * 10000) + (thisMonth * 100) + (thisDate)).toString() + '/' + rootPath;
-
-        const firedb_write = firedb.ref(dbRef).transaction((oldData) => {
-            firedb.ref(dbRef).push(newData);
-        });
-
-        Promise.all([firestore_transaction, firedb_write]).then(() => {
+        }).then(() => {
             alert("Data Berhasil Disimpan!");
 
             this.setState({
@@ -258,7 +278,7 @@ export default class InputForm extends React.Component {
 
     handleStringChange(e) {
         this.setState({
-            [e.target.name]: e.target.value,
+            [e.target.name]: encodeURIComponent(e.target.value),
         });
     }
 
@@ -293,6 +313,12 @@ export default class InputForm extends React.Component {
         });
     }
 
+    handleIntChange(e){
+        this.setState({
+            [e.target.name] : (e.target.value > 0 ? parseInt(e.target.value.toString(), 10) : 0),
+        });
+    }
+
     render() {
         return (
             <div className="jumbotron bg-secondary">
@@ -314,16 +340,16 @@ export default class InputForm extends React.Component {
 
                     <TextInput name="info" placeholder="Masukkan Keterangan di sini" title="Keterangan"
                         maxLength={50}
-                        value={this.state.info}
+                        value={decodeURIComponent(this.state.info)}
                         onChange={this.handleStringChange}
                     />
 
-                    <NumberInput name="amount" placeholder="Masukkan Jumlah di sini" title="Jumlah"
+                    <NumberInput name="amount" title="Jumlah"
                         min={0}
                         max={9999999999}
                         value={this.state.amount}
                         step={1000}
-                        onChange={this.handleDateChange}
+                        onChange={this.handleIntChange}
                     />
 
                     <Button className="btn btn-primary btn-lg col-12" text="Konfirmasi"

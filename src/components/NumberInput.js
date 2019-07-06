@@ -21,7 +21,6 @@ export default class NumberInput extends React.Component{
                         max={this.props.max} 
                         value={this.props.value} 
                         step={this.props.step} 
-                        placeholder={this.props.placeholder}
                         onChange={this.props.onChange}
                     />
                 </div>
