@@ -1,21 +1,30 @@
 import React from 'react';
+import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
 
-import Navbar from './Navbar'
 import InputForm from './InputForm'
 import DataDisplay from './DataDisplay'
+import RecentEntry from './RecentEntry'
+import CustomAppBar from './CustomAppBar'
 
-//TODO: Use Material UI Components
+import {Box} from '@material-ui/core';
+import { borders, spacing } from '@material-ui/system';
+
+//TODO: Login Page
+//TODO: Optimize for PWA
 
 export default class App extends React.Component{
     render(){
         return(
-            <React.Fragment>
-                <Navbar />
-                <div className = "container mt-5">
-                    <DataDisplay />
-                    <InputForm />
-                </div>
-            </React.Fragment>
+            <Router>
+                <CustomAppBar />
+                <Box m={4} px={2} py={4} borderRadius={16} border={1} borderColor='grey.500'>
+                    <Switch>
+                        <Route path='/add' component={InputForm} />
+                        <Route path='/show' component={DataDisplay} />
+                        <Route component={RecentEntry} />
+                    </Switch>
+                </Box>
+            </Router>
         );
     }
 }

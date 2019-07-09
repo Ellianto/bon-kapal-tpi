@@ -1,182 +1,110 @@
 import React from 'react'
-import {firestore} from '../firebase.js';
 
-import TransactionPicker from './TransactionPicker'
-import DatePicker from './DatePicker'
-import Button from './Button'
-import TextInput from './TextInput'
-import NumberInput from './NumberInput'
+import {firestore} from '../firebase';
 
+import {TextField, InputAdornment, Button, Grid, Typography, Snackbar, SnackbarContent} from '@material-ui/core';
 export default class InputForm extends React.Component {
     constructor(props) {
         super(props);
 
+        this.formatCurrency = this.formatCurrency.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
         this.handleIntChange = this.handleIntChange.bind(this);
         this.handleStringChange = this.handleStringChange.bind(this);
         this.handleDateChange = this.handleDateChange.bind(this);
-        this.handleMonthOrYearChange = this.handleMonthOrYearChange.bind(this);
+        this.handleSnackBarClose = this.handleSnackBarClose.bind(this);
 
-        const now = new Date();
-        const thisDate = now.getDate();
-        const thisMonth = now.getMonth() + 1;
-        const thisYear = now.getFullYear();
-
-        this.state = {
-            transaction: 'pemasukan',
-            newDate : thisDate,
-            newMonth: thisMonth,
-            newYear: thisYear,
-            info: '',
-            amount: 0,
-            items: {
-                dates: this.populateDates(thisMonth, thisYear),
-                months: this.populateMonths(),
-                years: this.populateYears(thisYear),
-            }
-        };
-
-        this.inputName = {
-            date: "newDate",
-            month: "newMonth",
-            year: "newYear",
-        };
-    }
-
-    populateDates(month, year, update=false) {
-        let dates = [];
-        let maxDates = 31;
-
-        let _30DayMonths = month === 4 ||
-            month === 6 ||
-            month === 9 ||
-            month === 11;
-
-        let monthIsFebruary = month === 2;
-
-        if (_30DayMonths) {
-            maxDates = 30;
-        } else if (monthIsFebruary) {
-            let isLeapYear = new Date(year, 1, 29).getMonth() === 1;
-
-            if (isLeapYear) {
-                maxDates = 29;
-            } else {
-                maxDates = 28;
-            }
+        this.transactionChoices = [
+        {
+            text : 'Pemasukan',
+            value: 'pemasukan',
+        },
+        {
+            text : 'Pengeluaran',
+            value: 'pengeluaran',
         }
-
-        for (let i = 1; i <= maxDates; i++) {
-            dates.push({
-                text: i,
-                value: i,
-            });
-        }
-
-        if (update) {
-            let currDate = this.state.newDate;
-
-            while (currDate > dates.length) {
-                currDate--;
-            }
-
-            this.setState({
-                newDate: currDate,
-            });
-        }
-
-        return dates;
-    }
-
-    populateMonths() {
-        const months = [
-            {
-                text: "Januari",
-                value: 1,
-            },
-            {
-                text: "Februari",
-                value: 2,
-            },
-            {
-                text: "Maret",
-                value: 3,
-            },
-            {
-                text: "April",
-                value: 4,
-            },
-            {
-                text: "Mei",
-                value: 5,
-            },
-            {
-                text: "Juni",
-                value: 6,
-            },
-            {
-                text: "Juli",
-                value: 7,
-            },
-            {
-                text: "Agustus",
-                value: 8,
-            },
-            {
-                text: "September",
-                value: 9,
-            },
-            {
-                text: "Oktober",
-                value: 10,
-            },
-            {
-                text: "November",
-                value: 11,
-            },
-            {
-                text: "Desember",
-                value: 12,
-            },
         ];
 
-        return months;
+        this.state = {
+            info: '',
+            amount: '0',
+            snackBarOpen : false,
+            snackBarMessage : '',
+            transaction: 'pemasukan',
+            date: this.formatDate(),
+        };
     }
 
-    populateYears(currYear) {
-        let years = [];
+    formatDate(){
+        const now = new Date();
 
-        for (let ctr = 0; ctr <= 30; ctr++) {
-            let calcYear = currYear - ctr;
+        let thisYear = now.getFullYear().toString();
+        let thisMonth = (now.getMonth() + 1).toString();
+        let thisDate = now.getDate().toString();
 
-            years.push({
-                text: calcYear,
-                value: calcYear,
-            });
+        if(thisMonth.length === 1){
+            thisMonth = '0' + thisMonth;
         }
 
-        return years;
+        if(thisDate.length === 1){
+            thisDate = '0' + thisDate;
+        }
+
+        return `${thisYear}-${thisMonth}-${thisDate}`;
+    }
+
+    formatCurrency(numString){
+        let inputString = numString.split('');
+        let upperLimit = Math.floor(numString.length / 3);
+        let ctr = 1;
+
+        while (ctr <= upperLimit) {
+            inputString.splice((-3 * ctr) - ctr + 1, 0, '.');
+            ctr++;
+        }
+
+        if(inputString[0] === '.'){
+            inputString.shift();
+        }
+
+        return inputString.join('');
     }
 
     handleSubmit(e) {
         e.preventDefault();
 
-        const thisDate = this.state.newDate;
-        const thisMonth = this.state.newMonth;
-        const thisYear = this.state.newYear;
+        if(this.state.info === ''){
+            this.setState({
+                snackBarMessage : 'Pastikan keterangan tidak kosong!',
+                snackBarOpen : true,
+            });
 
-        const now = new Date();
-        const inputDate = new Date(thisYear, thisMonth-1, thisDate);
-
-        const timeOverflow = inputDate > now;
-
-        if(timeOverflow){
-            alert("Masukkan Tanggal yang benar! Maksimal adalah tanggal hari ini!");
             return;
         }
 
-        const thisAmount = this.state.amount;
+        const now = new Date();
         const timeNow = now.valueOf();
+        
+        const inputDate = this.state.date.replace(/-/g, '');
+
+        const inputDateValue = new Date(
+            parseInt(inputDate.substring(0,4),10),
+            parseInt(inputDate.substring(4,6),10) - 1,
+            parseInt(inputDate.substring(6),10)
+        ).setHours(0, 0, 0, 0);
+
+        const timeOverflow = inputDateValue.valueOf() > timeNow;
+
+        if(timeOverflow){
+            this.setState({
+                snackBarMessage: 'Pastikan tanggal yang dimasukkan benar!',
+                snackBarOpen: true,
+            });
+
+            return;
+        }
+
+        const thisAmount = parseInt(this.state.amount, 10);
 
         const newEntry = {
             amount: thisAmount,
@@ -186,19 +114,16 @@ export default class InputForm extends React.Component {
 
         const thisTrans = this.state.transaction;
         const isIncome = thisTrans === 'pemasukan';
-
-        const refPath = ((thisYear * 10000) + (thisMonth * 100) + (thisDate)).toString();
         const endPath = isIncome ? 'i' : 'o';
 
         const recentRef = firestore.collection('recent').doc('entry');
 
-        const aggregationRef = firestore.collection('aggr').doc(thisYear.toString());
+        const aggregationRef = firestore.collection('aggr').doc(inputDate.substring(0, 4));
 
-        const dateRef = firestore.collection('data').doc(refPath);
+        const dateRef = firestore.collection('data').doc(inputDate);
         const newRef = dateRef.collection(endPath).doc();
 
         firestore.runTransaction(async (transaction) => {
-
             const [aggregationDoc, recentDoc, dateDoc] = await Promise.all([
                 transaction.get(aggregationRef), 
                 transaction.get(recentRef),
@@ -230,11 +155,13 @@ export default class InputForm extends React.Component {
             let dateEntry = dateDoc.exists ? dateDoc.data() : { isum: 0, osum: 0, lastUp: 0 };
             let recentArr = recentDoc.exists ? recentDoc.data().entries : [];
 
-            const newLength = recentArr.unshift({ ref: refPath + endPath, ...newEntry});
+            const newLength = recentArr.unshift({ ref: inputDate + endPath, ...newEntry});
 
             if (newLength > 10) {
                 recentArr.pop();
             }
+
+            const thisMonth = parseInt(inputDate.substring(4, 6), 10);
 
             if(isIncome){
                 dateEntry.isum += thisAmount;
@@ -256,23 +183,20 @@ export default class InputForm extends React.Component {
 
             return Promise.resolve(true);
         }).then(() => {
-            alert("Data Berhasil Disimpan!");
-
             this.setState({
                 transaction: 'pemasukan',
-                newDate: now.getDate(),
-                newMonth: now.getMonth() + 1,
-                newYear: now.getFullYear(),
+                date : this.formatDate(),
                 info: '',
-                amount: 0,
-                items: {
-                    dates: this.populateDates(now.getMonth() + 1, now.getFullYear(), false),
-                    months: this.populateMonths(),
-                    years: this.populateYears(now.getFullYear()),
-                }
+                amount: '0',
+                snackBarMessage: 'Data Berhasil Disimpan!',
+                snackBarOpen: true,
             });
         }).catch((err) => {
             console.error(err);
+            this.setState({
+                snackBarMessage: 'Terjadi kesalahan ketika menyimpan data! Coba lagi dalam beberapa saat',
+                snackBarOpen: true,
+            });
         });
     }
 
@@ -284,79 +208,117 @@ export default class InputForm extends React.Component {
 
     handleDateChange(e) {
         this.setState({
-            [e.target.name]: parseInt(e.target.value),
-        });
-    }
-
-    handleMonthOrYearChange(e) {
-        let thisMonth = 0;
-        let thisYear = 0;
-        let items = {
-            dates: [],
-            months: this.state.items.months,
-            years: this.state.items.years,
-        };
-
-        if (e.target.name.toLowerCase().includes('month')) {
-            thisMonth = parseInt(e.target.value);
-            thisYear = this.state.newYear;
-        } else {
-            thisYear = parseInt(e.target.value);
-            thisMonth = this.state.newMonth;
-        }
-
-        items.dates = this.populateDates(thisMonth, thisYear, true);
-
-        this.setState({
-            [e.target.name]: parseInt(e.target.value),
-            items: items,
+            [e.target.name]: e.target.value,
         });
     }
 
     handleIntChange(e){
         this.setState({
-            [e.target.name] : (e.target.value > 0 ? parseInt(e.target.value.toString(), 10) : 0),
+            [e.target.name]: e.target.value == null || e.target.value == '' ? '0' : parseInt(e.target.value.replace(/\./g, ''), 10).toString(),
+        });
+    }
+
+    handleSnackBarClose(event, reason){
+        if(reason === 'clickaway'){
+            return;
+        }
+
+        this.setState({
+            snackBarMessage : '',
+            snackBarOpen : false,
         });
     }
 
     render() {
         return (
-            <div className="jumbotron bg-secondary">
-                <form className="form-horizontal">
-                    <TransactionPicker name="transaction" title="Jenis Transaksi"
-                        value={this.state.transaction}
-                        onChange={this.handleStringChange}
+            <React.Fragment>
+                <Snackbar
+                    key={this.state.snackBarMessage}
+                    autoHideDuration={3000}
+                    open={this.state.snackBarOpen}
+                    onClose={this.handleSnackBarClose}
+                    ContentProps={{ 'aria-describedby': 'message' }}
+                    anchorOrigin={{
+                        vertical: 'top',
+                        horizontal: 'center',
+                    }}
+                >
+                    <SnackbarContent
+                        key={this.state.snackBarMessage}
+                        message={<span id='message'> {this.state.snackBarMessage} </span>}
+                        action={[<Button size='small' color='secondary' onClick={this.handleSnackBarClose}> TUTUP </Button>]}
                     />
+                </Snackbar>
+                
+                <form>
+                    <Grid container direction='row' justify='space-around' alignItems='center' spacing={5} >
+                        <Grid item xs={12}>
+                            <Typography variant='h5' align='center'> Tambahkan Bon </Typography>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField fullWidth select id='transactionSelect' name='transaction' label='Jenis Transaksi' helperText='Pemasukan/Pengeluaran' required style={{ width: '100%' }}
+                                variant='outlined'
+                                value={this.state.transaction}
+                                onChange={this.handleStringChange}
+                                SelectProps={{
+                                    native: true,
+                                }}
+                            >
+                                {
+                                    this.transactionChoices.map((choice) => (
+                                        <option value={choice.value} key={choice.value}>
+                                            {choice.text}
+                                        </option>
+                                    ))
+                                }
+                            </TextField>
+                        </Grid>
 
-                    <DatePicker
-                        name={this.inputName}
-                        dateValue={this.state.newDate}
-                        monthValue={this.state.newMonth}
-                        yearValue={this.state.newYear}
-                        onDateChange={this.handleDateChange}
-                        onMonthOrYearChange={this.handleMonthOrYearChange}
-                        items={this.state.items}
-                    />
+                        <Grid item xs={12} md={6}>
+                            <TextField fullWidth id='dateInput' name='date' label='Tanggal (mm/dd/yyyy)' type='date' required style={{ width: '100%' }}
+                                variant='outlined'
+                                helperText='Masukkan tanggal yang tertera di bon'
+                                value={this.state.date}
+                                onChange={this.handleDateChange}
+                            />
+                        </Grid>
+                        
+                        <Grid item xs={12} md={6}>
+                            <TextField fullWidth id='info' name='info' label='Keterangan' type='text' required style={{ width: '100%' }}
+                                variant='outlined'
+                                helperText='Masukkan keterangan bon (max 35 karakter)'
+                                value={decodeURIComponent(this.state.info)}
+                                onChange={this.handleStringChange}
+                                inputProps={{
+                                    maxLength: 35,
+                                }}
+                            />
+                        </Grid>
 
-                    <TextInput name="info" placeholder="Masukkan Keterangan di sini" title="Keterangan"
-                        maxLength={50}
-                        value={decodeURIComponent(this.state.info)}
-                        onChange={this.handleStringChange}
-                    />
+                        <Grid item xs={12} md={6}>
+                            <TextField fullWidth id='amount' name='amount' label='Jumlah' type='text' required style={{ width: '100%'}}
+                                variant='outlined'
+                                helperText='Masukkan jumlah uang di bon'
+                                onChange={this.handleIntChange}
+                                value={this.formatCurrency(this.state.amount)}
+                                InputProps={{
+                                    startAdornment: <InputAdornment position='start'> Rp. </InputAdornment>,
+                                    inputProps: {
+                                        maxLength: 14,
+                                        pattern: "[0-9]{1,12}"
+                                    }
+                                }}
+                            />
+                        </Grid>
 
-                    <NumberInput name="amount" title="Jumlah"
-                        min={0}
-                        max={9999999999}
-                        value={this.state.amount}
-                        step={1000}
-                        onChange={this.handleIntChange}
-                    />
-
-                    <Button className="btn btn-primary btn-lg col-12" text="Konfirmasi"
-                        onClick={this.handleSubmit}
-                    />
+                        <Grid item xs={12}>
+                            <Button variant='contained' color='primary' onClick={this.handleSubmit} size='large' fullWidth>
+                                Konfirmasi
+                            </Button>
+                        </Grid>
+                    </Grid>
                 </form>
-            </div>
+            </React.Fragment>
         );
     }
 }

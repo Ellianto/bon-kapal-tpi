@@ -1,7 +1,8 @@
 import React from 'react';
-import {Table, TableHead, TableBody, TableRow, TableCell, Button} from '@material-ui/core';
+import {Table, TableHead, TableBody, TableRow, TableCell, Button, Typography} from '@material-ui/core';
+import {green, red} from '@material-ui/core/colors'
 
-//TODO: Do theming here
+// TODO: Beautify and find 'dynamic viewport-based sizing' solution
 
 class ExpandableRow extends React.Component{
     constructor(props){
@@ -10,16 +11,29 @@ class ExpandableRow extends React.Component{
         this.readableKey = this.readableKey.bind(this);
         this.toggleIRow = this.toggleIRow.bind(this);
         this.toggleORow = this.toggleORow.bind(this);
+        this.formatCurrency = this.formatCurrency.bind(this);
 
         this.state = {
             iExpand : false,
             oExpand : false,
         }
+    }
 
-        this.formatter = new Intl.NumberFormat('en-US', {
-            style : 'currency', 
-            currency : 'IDR',
-        });
+    formatCurrency(inputNumber) {
+        let inputString = inputNumber.toString().split('');
+        let upperLimit = Math.floor(inputNumber.toString().length / 3);
+        let ctr = 1;
+
+        while (ctr <= upperLimit) {
+            inputString.splice((-3 * ctr) - ctr + 1, 0, '.');
+            ctr++;
+        }
+
+        if (inputString[0] === '.') {
+            inputString.shift();
+        }
+
+        return 'Rp. ' + inputString.join('');
     }
 
     toggleIRow(){
@@ -50,28 +64,36 @@ class ExpandableRow extends React.Component{
 
         if(this.props.item.isum === 0){
             iButton = (
-                <Button size = "large" variant="contained" color="primary" disabled>
-                    -
+                <Button size="small" color="secondary" disabled>
+                    <Typography variant='overline' align='center'>
+                        -
+                    </Typography>
                 </Button>
             );
         } else {
             iButton = (
-                <Button size="large" variant="contained" color="primary" onClick={this.toggleIRow}> 
-                    {this.formatter.format(this.props.item.isum)} 
+                <Button size="small" color="primary" onClick={this.toggleIRow}> 
+                    <Typography variant='caption' align='center'>
+                        {this.formatCurrency(this.props.item.isum)}
+                    </Typography>
                 </Button>
             );
         }
 
         if(this.props.item.osum === 0){
             oButton = (
-                <Button size="large" variant = "contained" color="secondary" disabled>
-                    -
+                <Button size="small" color="secondary" disabled>
+                    <Typography variant='overline' align='center'>
+                        -
+                    </Typography>
                 </Button>
             );
         } else {
             oButton = (
-                <Button size="large" variant="contained" color="secondary" onClick={this.toggleORow}> 
-                    {this.formatter.format(this.props.item.osum)} 
+                <Button size="small" color="secondary" onClick={this.toggleORow}> 
+                    <Typography variant='caption' align='center'>
+                        {this.formatCurrency(this.props.item.osum)} 
+                    </Typography>
                 </Button>
             );
         }
@@ -79,7 +101,11 @@ class ExpandableRow extends React.Component{
         return(
             <React.Fragment>
                 <TableRow>
-                    <TableCell> {this.readableKey(this.props.idx)} </TableCell>
+                    <TableCell> 
+                        <Typography variant='overline' align='left'>
+                            {this.readableKey(this.props.idx)}    
+                        </Typography>    
+                    </TableCell>
                     <TableCell>
                         {iButton}
                     </TableCell>
@@ -93,12 +119,16 @@ class ExpandableRow extends React.Component{
                         const data = doc.data();
 
                         return (
-                            <TableRow>
+                            <TableRow style={{ background: green[300] }}>
                                 <TableCell>
-                                    {data.info}
+                                    <Typography variant='caption'>
+                                        {data.info}
+                                    </Typography>
                                 </TableCell>
                                 <TableCell colSpan={2}>
-                                    {this.formatter.format(data.amount)}
+                                    <Typography variant='caption'>
+                                        {this.formatCurrency(data.amount)}
+                                    </Typography>
                                 </TableCell>
                             </TableRow>
                         );
@@ -111,16 +141,20 @@ class ExpandableRow extends React.Component{
                         const data = doc.data();
 
                         return (
-                            <TableRow>
+                            <TableRow style={{ background: red['A100'] }}>
                                 <TableCell>
-                                    {data.info}
+                                    <Typography variant='caption'>
+                                        {data.info}
+                                    </Typography>
                                 </TableCell>
                                 <TableCell colSpan={2}>
-                                    {this.formatter.format(data.amount)}
+                                    <Typography variant='caption'>
+                                        {this.formatCurrency(data.amount)}
+                                    </Typography>
                                 </TableCell>
                             </TableRow>
                         );
-                    }) 
+                    })  
                     : null
                 }
             </React.Fragment>
@@ -132,7 +166,7 @@ class ExpandableRow extends React.Component{
 export default class ExpandableTable extends React.Component{
     render(){
         return(
-            <Table>
+            <Table size='small' padding='none'>
                 <TableHead>
                     <TableRow>
                         <TableCell> Tanggal </TableCell>

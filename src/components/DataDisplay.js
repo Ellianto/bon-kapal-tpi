@@ -1,226 +1,74 @@
 import React from 'react'
 import firebase, {firestore} from '../firebase'
 
-import DatePicker from './DatePicker'
-import Button from './Button'
 import ExpandableTable from './ExpandableTable'
+import {Grid, TextField, Button} from '@material-ui/core'
 
 export default class DataDisplay extends React.Component {
 	constructor(props){
 		super(props);
 
-		this.handleDateChange = this.handleDateChange.bind(this);
-		this.handleMonthOrYearChange = this.handleMonthOrYearChange.bind(this);
 		this.fetchData = this.fetchData.bind(this);
-
-		const now = new Date();
-		const dateObj = {
-			date: now.getDate(),
-			month: now.getMonth() + 1,
-			year: now.getFullYear(),
-			items : {
-				dates: this.populateDates(now.getMonth() + 1, now.getFullYear()),
-				months: this.populateMonths(),
-				years: this.populateYears(now.getFullYear()),
-			}
-		};
-
-		this.dateNames = {
-			start :{
-				date : 'startDate',
-				month : 'startMonth',
-				year : 'startYear',
-			},
-			end :{
-				date : 'endDate',
-				month : 'endMonth',
-				year : 'endYear',
-			},
-		}
+		this.formatDate = this.formatDate.bind(this);
+		this.handleDateChange = this.handleDateChange.bind(this);
 
 		this.state = {
-		   startDate : dateObj.date,
-		   startMonth : dateObj.month,
-		   startYear : dateObj.year,
-		   startItems : dateObj.items,
-		   endDate : dateObj.date,
-		   endMonth : dateObj.month,
-		   endYear : dateObj.year,
-		   endItems : dateObj.items,
-		   tableItems : [],
+		   	startDate : this.formatDate(),
+			endDate: this.formatDate(),
+			snackBarOpen : false,
+			snackBarMessage : '',
+		   	tableItems : [],
 		};
 	}
 
-	populateDates(month, year, update=false, start=true) {
-		let dates = [];
-		let maxDates = 31;
 
-		let _30DayMonths = month === 4 ||
-			month === 6 ||
-			month === 9 ||
-			month === 11;
+	formatDate() {
+		const now = new Date();
 
-		let monthIsFebruary = month === 2;
+		let thisYear = now.getFullYear().toString();
+		let thisMonth = (now.getMonth() + 1).toString();
+		let thisDate = now.getDate().toString();
 
-		if (_30DayMonths) {
-			maxDates = 30;
-		} else if (monthIsFebruary) {
-			let isLeapYear = new Date(year, 1, 29).getMonth() === 1;
-
-			if (isLeapYear) {
-				maxDates = 29;
-			} else {
-				maxDates = 28;
-			}
+		if (thisMonth.length === 1) {
+			thisMonth = '0' + thisMonth;
 		}
 
-		for (let i = 1; i <= maxDates; i++) {
-			dates.push({
-				text: i,
-				value: i,
-			});
+		if (thisDate.length === 1) {
+			thisDate = '0' + thisDate;
 		}
 
-		if (update) {
-			const dateState = start ? 'startDate' : 'endDate';
-			let currDate = start ? this.state.startDate : this.state.endDate;
-
-			while (currDate > dates.length) {
-				currDate--;
-			}
-
-			this.setState({
-				[dateState] : currDate,
-			});
-		}
-
-		return dates;
-	}
-
-	populateMonths() {
-		const months = [
-			{
-				text: "Januari",
-				value: 1,
-			},
-			{
-				text: "Februari",
-				value: 2,
-			},
-			{
-				text: "Maret",
-				value: 3,
-			},
-			{
-				text: "April",
-				value: 4,
-			},
-			{
-				text: "Mei",
-				value: 5,
-			},
-			{
-				text: "Juni",
-				value: 6,
-			},
-			{
-				text: "Juli",
-				value: 7,
-			},
-			{
-				text: "Agustus",
-				value: 8,
-			},
-			{
-				text: "September",
-				value: 9,
-			},
-			{
-				text: "Oktober",
-				value: 10,
-			},
-			{
-				text: "November",
-				value: 11,
-			},
-			{
-				text: "Desember",
-				value: 12,
-			},
-		];
-
-		return months;
-	}
-
-	populateYears(currYear) {
-		let years = [];
-
-		for (let ctr = 0; ctr <= 30; ctr++) {
-			let calcYear = currYear - ctr;
-
-			years.push({
-				text: calcYear,
-				value: calcYear,
-			});
-		}
-
-		return years;
+		return `${thisYear}-${thisMonth}-${thisDate}`;
 	}
 
 	handleDateChange(e) {
 		this.setState({
-		   [e.target.name]: parseInt(e.target.value),
-		});
-	}
-
-	handleMonthOrYearChange(e){
-		let thisMonth = 0;
-		let thisYear = 0;
-		let items = {
-			dates: [],
-			months: this.state.startItems.months,
-			years: this.state.startItems.years,
-		};
-
-		if (e.target.name.toLowerCase().includes('month')) {
-			thisMonth = parseInt(e.target.value);
-			thisYear = this.state.startYear;
-		} else {
-			thisYear = parseInt(e.target.value);
-			thisMonth = this.state.startMonth;
-		}
-
-		const isStartDate = e.target.name.toLowerCase().includes('start') ? true : false;
-		const stateName = isStartDate ? 'startItems' : 'endItems';
-
-		items.dates = this.populateDates(thisMonth, thisYear, true, isStartDate);
-
-		this.setState({
-			[e.target.name]: parseInt(e.target.value),
-			[stateName]: items,
+			[e.target.name]: e.target.value,
 		});
 	}
 
 	fetchData(e){
 		e.preventDefault();
 
-		const startDate = this.state.startDate;
-		const startMonth = this.state.startMonth;
-		const startYear = this.state.startYear;
+		const startDate = this.state.startDate.replace(/-/g, '');
 
-		const endDate = this.state.endDate;
-		const endMonth = this.state.endMonth;
-		const endYear = this.state.endYear;
+		const startDateValue = new Date(
+			parseInt(startDate.substring(0, 4), 10),
+			parseInt(startDate.substring(4, 6), 10) - 1,
+			parseInt(startDate.substring(6), 10)
+		);
 
-		const startTime = new Date(startYear, startMonth-1, startDate);
-		const endTime = new Date(endYear, endMonth-1, endDate);
 
-		const timeOverflow = startTime > endTime;
-		const specificDate = startTime.valueOf() === endTime.valueOf();
+		const endDate = this.state.endDate.replace(/-/g, '');
 
-		const dbRefStart = ((startYear * 10000) + (startMonth * 100) + (startDate)).toString();
-		const dbRefEnd = ((endYear * 10000) + (endMonth * 100) + (endDate)).toString();
+		const endDateValue = new Date(
+			parseInt(endDate.substring(0, 4), 10),
+			parseInt(endDate.substring(4, 6), 10) - 1,
+			parseInt(endDate.substring(6), 10)
+		);
 
+		const timeOverflow = startDateValue.valueOf() > endDateValue.valueOf();
+		const specificDate = startDateValue.valueOf() === endDateValue.valueOf();
+		
 		let docMap = new Map();
 
 		const populateMap = async (doc) => {
@@ -241,7 +89,7 @@ export default class DataDisplay extends React.Component {
 		if(timeOverflow){
 			alert("Mohon masukkan tanggal yang benar! Batas awal harus lebih awal daripada batas akhir!");
 		} else if(specificDate){
-			const singleRef = firestore.collection('data').doc(dbRefStart);
+			const singleRef = firestore.collection('data').doc(startDate);
 
 			singleRef.get().then((doc) => {
 				if(doc.exists){
@@ -260,11 +108,8 @@ export default class DataDisplay extends React.Component {
 			});
 		} else {
 			const multiRef = firestore.collection('data')
-				.where(firebase.firestore.FieldPath.documentId(), '>=', dbRefStart)
-				.where(firebase.firestore.FieldPath.documentId(), '<=', dbRefEnd);
-
-			console.log(dbRefStart);
-			console.log(dbRefEnd);
+				.where(firebase.firestore.FieldPath.documentId(), '>=', startDate)
+				.where(firebase.firestore.FieldPath.documentId(), '<=', endDate);
 
 			multiRef.get().then((querySnapshot) => {
 				const promiseArr = querySnapshot.docs.map(populateMap);
@@ -279,55 +124,40 @@ export default class DataDisplay extends React.Component {
 				console.error(err);
 			});
 		}
-
 	}
 
 	render() {
 		return (
-			<div>
-				<div id="dataDisplay" className="container">
-					<form className='form-horizontal'>
-						<div className="container">
-							<div className="mx-auto text-center">
-								<label htmlFor="start">
-									<h3> Batas Awal </h3>
-								</label>
-							</div>
-							<DatePicker
-								name={this.dateNames.start}
-								dateValue={this.state.startDate}
-								monthValue={this.state.startMonth}
-								yearValue={this.state.startYear}
-								onDateChange={this.handleDateChange}
-								onMonthOrYearChange={this.handleMonthOrYearChange}
-								items={this.state.startItems}
+			<React.Fragment>
+				<Grid container direction='row' justify='space-evenly' alignItems='center' spacing={6}>
+					<Grid container item direction='row' justify='space-around' alignItems='center' spacing={3} xs={12}>
+						<Grid item xs={12} md={6}>
+							<TextField fullWidth id='startDate' name='startDate' label='Tanggal Awal (mm/dd/yyyy)' type='date' required style={{ width: '100%' }}
+								variant='outlined'
+								helperText='Masukkan tanggal awal'
+								value={this.state.startDate}
+								onChange={this.handleDateChange}
 							/>
-						</div>
-						<div className="container">
-							<div className="mx-auto text-center">
-								<label htmlFor="end">
-									<h3> Batas Akhir </h3>
-								</label>
-							</div>
-							<DatePicker
-								name={this.dateNames.end}
-								dateValue={this.state.endDate}
-								monthValue={this.state.endMonth}
-								yearValue={this.state.endYear}
-								onDateChange={this.handleDateChange}
-								onMonthOrYearChange={this.handleMonthOrYearChange}
-								items={this.state.endItems}
+						</Grid>
+						<Grid item xs={12} md={6}>
+							<TextField fullWidth id='endDate' name='endDate' label='Tanggal Akhir (mm/dd/yyyy)' type='date' required style={{ width: '100%' }}
+								variant='outlined'
+								helperText='Masukkan tanggal akhir'
+								value={this.state.endDate}
+								onChange={this.handleDateChange}
 							/>
-						</div>
-						<Button className="btn btn-primary btn-lg btn-block" text="Tampilkan"
-							onClick={this.fetchData}
-						/>
-					</form>
-				</div>
-				<div className = "container">
-					<ExpandableTable items={this.state.tableItems}/>
-				</div>
-			</div>
+						</Grid>
+					</Grid>
+					<Grid item xs={12}>
+						<Button variant='contained' color='primary' size='medium' onClick={this.fetchData} fullWidth>
+							Cari Bon
+						</Button>
+					</Grid>
+					<Grid item xs={12}>
+						<ExpandableTable items={this.state.tableItems} />
+					</Grid>
+				</Grid>
+			</React.Fragment>
 		);
 	}
 }
