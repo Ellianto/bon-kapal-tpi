@@ -10,7 +10,8 @@ import {Box} from '@material-ui/core';
 import { borders, spacing } from '@material-ui/system';
 
 //TODO: Login Page
-//TODO: Optimize for PWA
+//TODO: Implement better caching policy
+//TODO: Enable offline access
 
 export default class App extends React.Component{
     render(){

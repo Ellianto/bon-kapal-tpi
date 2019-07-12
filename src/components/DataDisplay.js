@@ -2,7 +2,9 @@ import React from 'react'
 import firebase, {firestore} from '../firebase'
 
 import ExpandableTable from './ExpandableTable'
-import {Grid, TextField, Button} from '@material-ui/core'
+import {Grid, TextField, Button, Snackbar, SnackbarContent} from '@material-ui/core'
+
+//TODO: Implement Loading UI
 
 export default class DataDisplay extends React.Component {
 	constructor(props){
@@ -10,7 +12,10 @@ export default class DataDisplay extends React.Component {
 
 		this.fetchData = this.fetchData.bind(this);
 		this.formatDate = this.formatDate.bind(this);
+		this.reloadTable = this.reloadTable.bind(this);
 		this.handleDateChange = this.handleDateChange.bind(this);
+		this.handleSnackBarOpen = this.handleSnackBarOpen.bind(this);
+		this.handleSnackBarClose = this.handleSnackBarClose.bind(this);
 
 		this.state = {
 		   	startDate : this.formatDate(),
@@ -40,15 +45,7 @@ export default class DataDisplay extends React.Component {
 		return `${thisYear}-${thisMonth}-${thisDate}`;
 	}
 
-	handleDateChange(e) {
-		this.setState({
-			[e.target.name]: e.target.value,
-		});
-	}
-
-	fetchData(e){
-		e.preventDefault();
-
+	fetchData(){
 		const startDate = this.state.startDate.replace(/-/g, '');
 
 		const startDateValue = new Date(
@@ -56,7 +53,6 @@ export default class DataDisplay extends React.Component {
 			parseInt(startDate.substring(4, 6), 10) - 1,
 			parseInt(startDate.substring(6), 10)
 		);
-
 
 		const endDate = this.state.endDate.replace(/-/g, '');
 
@@ -87,7 +83,10 @@ export default class DataDisplay extends React.Component {
 		};
 
 		if(timeOverflow){
-			alert("Mohon masukkan tanggal yang benar! Batas awal harus lebih awal daripada batas akhir!");
+			this.setState({
+				snackBarOpen : true,
+				snackBarMessage : 'Masukkan Tanggal yang benar!',
+			});
 		} else if(specificDate){
 			const singleRef = firestore.collection('data').doc(startDate);
 
@@ -105,6 +104,10 @@ export default class DataDisplay extends React.Component {
 				}
 			}).catch((err) => {
 				console.error(err);
+				this.setState({
+					snackBarOpen: true,
+					snackBarMessage: 'Terjadi kesalahan! Coba lagi!',
+				});
 			});
 		} else {
 			const multiRef = firestore.collection('data')
@@ -122,13 +125,67 @@ export default class DataDisplay extends React.Component {
 				}
 			}).catch((err) => {
 				console.error(err);
+				this.setState({
+					snackBarOpen: true,
+					snackBarMessage: 'Terjadi kesalahan! Coba lagi!',
+				});
 			});
 		}
+	}
+
+	handleDateChange(e) {
+		this.setState({
+			[e.target.name]: e.target.value,
+		});
+	}
+
+	handleSnackBarClose(event, reason) {
+		if (reason === 'clickaway') {
+			return;
+		}
+
+		this.setState({
+			snackBarMessage: '',
+			snackBarOpen: false,
+		});
+	}
+
+	handleSnackBarOpen(msg){
+		this.setState({
+			snackBarOpen : true,
+			snackBarMessage : msg,
+		});
+	}
+
+	reloadTable(){
+		this.setState({
+			tableItems : [],
+		});
+
+		setTimeout(this.fetchData(), 1000);
 	}
 
 	render() {
 		return (
 			<React.Fragment>
+				<Snackbar
+					autoHideDuration={2000}
+					key={this.state.snackBarMessage}
+					open={this.state.snackBarOpen}
+					onClose={this.handleSnackBarClose}
+					ContentProps={{ 'aria-describedby': 'message' }}
+					anchorOrigin={{
+						vertical: 'top',
+						horizontal: 'center',
+					}}
+				>
+					<SnackbarContent
+						key={this.state.snackBarMessage}
+						message={<span id='message'> {this.state.snackBarMessage} </span>}
+						action={[<Button key='close' size='small' color='secondary' onClick={this.handleSnackBarClose}> TUTUP </Button>]}
+					/>
+				</Snackbar>
+
 				<Grid container direction='row' justify='space-evenly' alignItems='center' spacing={6}>
 					<Grid container item direction='row' justify='space-around' alignItems='center' spacing={3} xs={12}>
 						<Grid item xs={12} md={6}>
@@ -154,7 +211,11 @@ export default class DataDisplay extends React.Component {
 						</Button>
 					</Grid>
 					<Grid item xs={12}>
-						<ExpandableTable items={this.state.tableItems} />
+						<ExpandableTable 
+							items={this.state.tableItems} 
+							openSnackBar={this.handleSnackBarOpen} 
+							reloadTable={this.reloadTable} 
+						/>
 					</Grid>
 				</Grid>
 			</React.Fragment>

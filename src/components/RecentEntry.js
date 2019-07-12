@@ -4,9 +4,7 @@ import {firestore} from '../firebase';
 
 import {Table, TableRow, TableCell, TableHead, TableBody, Grid, Typography} from '@material-ui/core';
 import {red, green} from '@material-ui/core/colors';
-
-// TODO: Beautify and find 'dynamic viewport-based sizing' solution
-
+import {spacing} from '@material-ui/system';
 
 export default class RecentEntry extends React.Component{
     constructor(props){
@@ -21,9 +19,11 @@ export default class RecentEntry extends React.Component{
 
     componentDidMount(){
         firestore.collection('recent').doc('entry').onSnapshot((docSnapshot) => {
-            this.setState({
-                recentEntries : docSnapshot.data().entries,
-            });
+            if(docSnapshot.exists){
+                this.setState({
+                    recentEntries: docSnapshot.data().entries,
+                });
+            }
         });
     }
 
@@ -41,7 +41,7 @@ export default class RecentEntry extends React.Component{
             inputString.shift();
         }
 
-        return 'Rp. ' + inputString.join('');
+        return 'Rp.' + inputString.join('');
     }
 
     renderRowEntry(entry){
@@ -56,13 +56,14 @@ export default class RecentEntry extends React.Component{
 
         const style = {
             background: transactionType === 'i' ? green[300] : red['A100'],
-        }
+            padding : '24px',
+        };
 
         return(
             <TableRow key={reference} style={style}>
-                <TableCell> {`${date}/${month}/${year}`} </TableCell>
-                <TableCell> {info} </TableCell>
-                <TableCell> {this.formatCurrency(amount)} </TableCell>
+                <TableCell align = 'left'> <Typography variant='caption'> {`${date}/${month}/${year}`}  </Typography> </TableCell>
+                <TableCell align = 'center'> <Typography variant='caption'> {decodeURIComponent(info)}    </Typography> </TableCell>
+                <TableCell align = 'right'> <Typography variant='caption'> {this.formatCurrency(amount)} </Typography> </TableCell>
             </TableRow>
         );
     }
@@ -79,12 +80,21 @@ export default class RecentEntry extends React.Component{
                 <Grid item xs={12}>
                     <Table size='small' padding='none'>
                         <TableHead>
-                            <TableCell> Tanggal </TableCell>
-                            <TableCell> Keterangan  </TableCell>
-                            <TableCell> Jumlah </TableCell>
+                            <TableCell align='center'> Tanggal </TableCell>
+                            <TableCell align='center'> Keterangan  </TableCell>
+                            <TableCell align='center' style={{ minWidth: 85}}> Jumlah </TableCell>
                         </TableHead>
                         <TableBody>
-                            {this.state.recentEntries.map(this.renderRowEntry)}
+                            {
+                                this.state.recentEntries.length === 0 ? 
+                                <TableCell colSpan={3} align='center'> 
+                                    <Typography variant='h6'>
+                                            <em> Tidak ada bon baru </em>
+                                    </Typography>
+                                </TableCell>
+                                :
+                                this.state.recentEntries.map(this.renderRowEntry)
+                            }
                         </TableBody>
                     </Table>
                 </Grid>

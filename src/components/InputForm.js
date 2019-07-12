@@ -3,6 +3,9 @@ import React from 'react'
 import {firestore} from '../firebase';
 
 import {TextField, InputAdornment, Button, Grid, Typography, Snackbar, SnackbarContent} from '@material-ui/core';
+
+//TODO: Implement Loading UI
+
 export default class InputForm extends React.Component {
     constructor(props) {
         super(props);
@@ -200,21 +203,21 @@ export default class InputForm extends React.Component {
         });
     }
 
-    handleStringChange(e) {
-        this.setState({
-            [e.target.name]: encodeURIComponent(e.target.value),
-        });
-    }
-
     handleDateChange(e) {
         this.setState({
             [e.target.name]: e.target.value,
         });
     }
 
+    handleStringChange(e) {
+        this.setState({
+            [e.target.name]: encodeURIComponent(e.target.value),
+        });
+    }
+
     handleIntChange(e){
         this.setState({
-            [e.target.name]: e.target.value == null || e.target.value == '' ? '0' : parseInt(e.target.value.replace(/\./g, ''), 10).toString(),
+            [e.target.name]: e.target.value == null || e.target.value === '' ? '0' : parseInt(e.target.value.replace(/\./g, ''), 10).toString(),
         });
     }
 
@@ -246,12 +249,12 @@ export default class InputForm extends React.Component {
                     <SnackbarContent
                         key={this.state.snackBarMessage}
                         message={<span id='message'> {this.state.snackBarMessage} </span>}
-                        action={[<Button size='small' color='secondary' onClick={this.handleSnackBarClose}> TUTUP </Button>]}
+                        action={[<Button key='close' size='small' color='secondary' onClick={this.handleSnackBarClose}> TUTUP </Button>]}
                     />
                 </Snackbar>
                 
                 <form>
-                    <Grid container direction='row' justify='space-around' alignItems='center' spacing={5} >
+                    <Grid container direction='row' justify='space-around' alignItems='center' spacing={3} >
                         <Grid item xs={12}>
                             <Typography variant='h5' align='center'> Tambahkan Bon </Typography>
                         </Grid>
