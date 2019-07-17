@@ -113,35 +113,3 @@ export default class RecentEntry extends React.Component{
         );
     }
 }
-
-/*
-    <Grid container direction='row' justify='space-evenly' alignItems='center' spacing={6}>
-        <Grid item xs={12}>
-            <Typography variant='h5' align='center'>
-                Bon-Bon Paling Baru
-            </Typography>
-        </Grid>
-
-        <Grid item xs={12}>
-            <Table size='small' padding='none'>
-                <TableHead>
-                    <TableCell align='center'> Tanggal </TableCell>
-                    <TableCell align='center'> Keterangan  </TableCell>
-                    <TableCell align='center' style={{ minWidth: 85}}> Jumlah </TableCell>
-                </TableHead>
-                <TableBody>
-                    {
-                        this.state.recentEntries.length === 0 ?
-                        <TableCell colSpan={3} align='center'>
-                            <Typography variant='h6'>
-                                    <em> Tidak ada bon baru </em>
-                            </Typography>
-                        </TableCell>
-                        :
-                        this.state.recentEntries.map(this.renderRowEntry)
-                    }
-                </TableBody>
-            </Table>
-        </Grid>
-    </Grid>
-*/

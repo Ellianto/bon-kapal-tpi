@@ -121,7 +121,7 @@ export default class App extends React.Component{
                         <Route path='/add_bon' exact render={props => <InputForm {...props} openSnackBar={this.openSnackBar} />} />
                         <Route path='/show' exact render={props => <DataDisplay {...props} openSnackBar={this.openSnackBar} />} />
                         <Route path='/add_ship' exact render={props => <AddShip {...props} openSnackBar={this.openSnackBar} />} />
-                        <Route path='/recent' exact render={props => <RecentEntry {...props} />} />
+                        <Route path='/recent' exact component={RecentEntry}/>
                     </Switch>
                 </Box>
             </Router>
