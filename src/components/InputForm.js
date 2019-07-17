@@ -2,7 +2,7 @@ import React from 'react'
 
 import {firestore} from '../firebase';
 
-import {TextField, InputAdornment, Button, Grid, Typography, Snackbar, SnackbarContent} from '@material-ui/core';
+import {TextField, InputAdornment, Button, Grid, Typography} from '@material-ui/core';
 
 //TODO: Implement Loading UI
 
@@ -10,32 +10,50 @@ export default class InputForm extends React.Component {
     constructor(props) {
         super(props);
 
+        this.formatDate = this.formatDate.bind(this);
         this.formatCurrency = this.formatCurrency.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
-        this.handleIntChange = this.handleIntChange.bind(this);
-        this.handleStringChange = this.handleStringChange.bind(this);
         this.handleDateChange = this.handleDateChange.bind(this);
-        this.handleSnackBarClose = this.handleSnackBarClose.bind(this);
+        this.handleStringChange = this.handleStringChange.bind(this);
+        this.handleIntChange = this.handleIntChange.bind(this);
+        this.notProperlyFilled = this.notProperlyFilled.bind(this);
 
         this.transactionChoices = [
-        {
-            text : 'Pemasukan',
-            value: 'pemasukan',
-        },
-        {
-            text : 'Pengeluaran',
-            value: 'pengeluaran',
-        }
+            {
+                text : 'Pemasukan',
+                value: 'pemasukan',
+            },
+            {
+                text : 'Pengeluaran',
+                value: 'pengeluaran',
+            }
         ];
 
         this.state = {
+            ship: '',
             info: '',
             amount: '0',
-            snackBarOpen : false,
-            snackBarMessage : '',
             transaction: 'pemasukan',
             date: this.formatDate(),
+            shipList : [],
         };
+    }
+
+    componentDidMount(){
+        const shipRef = firestore.collection('ship');
+        
+        shipRef.get().then((querySnapshot) => {
+            let shipList = [];
+
+            if (!querySnapshot.empty) {
+                querySnapshot.forEach((doc) => shipList.push(doc.id));
+            }
+
+            this.setState({
+                shipList : shipList,
+                ship : shipList[0],
+            });
+        });
     }
 
     formatDate(){
@@ -77,11 +95,12 @@ export default class InputForm extends React.Component {
         e.preventDefault();
 
         if(this.state.info === ''){
-            this.setState({
-                snackBarMessage : 'Pastikan keterangan tidak kosong!',
-                snackBarOpen : true,
-            });
+            this.props.openSnackBar('Pastikan keterangan tidak kosong!');
+            return;
+        }
 
+        if(this.state.ship === ''){
+            this.props.openSnackBar('Pilih Kapal terlebih dahulu!');
             return;
         }
 
@@ -99,13 +118,11 @@ export default class InputForm extends React.Component {
         const timeOverflow = inputDateValue.valueOf() > timeNow;
 
         if(timeOverflow){
-            this.setState({
-                snackBarMessage: 'Pastikan tanggal yang dimasukkan benar!',
-                snackBarOpen: true,
-            });
-
+            this.props.openSnackBar('Pastikan tanggal yang dimasukkan benar!');
             return;
         }
+
+        const shipName = this.state.ship;
 
         const thisAmount = parseInt(this.state.amount, 10);
 
@@ -120,16 +137,16 @@ export default class InputForm extends React.Component {
         const endPath = isIncome ? 'i' : 'o';
 
         const recentRef = firestore.collection('recent').doc('entry');
-
-        const aggregationRef = firestore.collection('aggr').doc(inputDate.substring(0, 4));
-
-        const dateRef = firestore.collection('data').doc(inputDate);
+        const shipRef = firestore.collection('ship').doc(shipName);
+        const aggregationRef = shipRef.collection('aggr').doc(inputDate.substring(0, 4));
+        const dateRef = shipRef.collection('bon').doc(inputDate);
         const newRef = dateRef.collection(endPath).doc();
 
         firestore.runTransaction(async (transaction) => {
-            const [aggregationDoc, recentDoc, dateDoc] = await Promise.all([
-                transaction.get(aggregationRef), 
+            const [recentDoc, shipDoc, aggregationDoc, dateDoc] = await Promise.all([
                 transaction.get(recentRef),
+                transaction.get(shipRef),
+                transaction.get(aggregationRef),
                 transaction.get(dateRef),
             ]);
 
@@ -140,7 +157,7 @@ export default class InputForm extends React.Component {
             } else {
                 let newArr = [];
 
-                for(let i = 0; i <= 13; i++){
+                for(let i = 0; i < 13; i++){
                     newArr.push({
                         isum : 0,
                         osum : 0,
@@ -155,10 +172,11 @@ export default class InputForm extends React.Component {
                 };
             }
 
-            let dateEntry = dateDoc.exists ? dateDoc.data() : { isum: 0, osum: 0, lastUp: 0 };
+            let shipValue = shipDoc.data();
+            let dateValue = dateDoc.exists ? dateDoc.data() : { isum: 0, osum: 0, lastUp: 0 };
             let recentArr = recentDoc.exists ? recentDoc.data().entries : [];
 
-            const newLength = recentArr.unshift({ ref: inputDate + endPath, ...newEntry});
+            const newLength = recentArr.unshift({ ship : shipName, ref: inputDate + endPath, ...newEntry});
 
             if (newLength > 10) {
                 recentArr.pop();
@@ -167,21 +185,25 @@ export default class InputForm extends React.Component {
             const thisMonth = parseInt(inputDate.substring(4, 6), 10);
 
             if(isIncome){
-                dateEntry.isum += thisAmount;
+                shipValue.isum += thisAmount;
+                dateValue.isum += thisAmount;
                 aggregationValue.isum += thisAmount;
                 aggregationValue.months[thisMonth].isum += thisAmount;
             } else {
-                dateEntry.osum += thisAmount;
+                shipValue.osum += thisAmount;
+                dateValue.osum += thisAmount;
                 aggregationValue.osum += thisAmount;
                 aggregationValue.months[thisMonth].osum += thisAmount;
             }
 
-            dateEntry.lastUp = timeNow;
+            shipValue.lastUp = timeNow;
+            dateValue.lastUp = timeNow;
             aggregationValue.lastUp = timeNow;
 
+            transaction.set(shipRef, shipValue, {merge : true});
             transaction.set(aggregationRef, aggregationValue, {merge : true});
             transaction.set(recentRef, {entries : recentArr}, {merge : true});
-            transaction.set(dateRef, dateEntry, {merge: true});
+            transaction.set(dateRef, dateValue, {merge: true});
             transaction.set(newRef, newEntry, {merge: true});
 
             return Promise.resolve(true);
@@ -191,15 +213,12 @@ export default class InputForm extends React.Component {
                 date : this.formatDate(),
                 info: '',
                 amount: '0',
-                snackBarMessage: 'Data Berhasil Disimpan!',
-                snackBarOpen: true,
             });
+
+            this.props.openSnackBar('Bon berhasil ditambahkan!');
         }).catch((err) => {
             console.error(err);
-            this.setState({
-                snackBarMessage: 'Terjadi kesalahan ketika menyimpan data! Coba lagi dalam beberapa saat',
-                snackBarOpen: true,
-            });
+            this.props.openSnackBar('Terjadi kesalahan ketika menyimpan bon! Coba lagi dalam beberapa saat');
         });
     }
 
@@ -221,107 +240,105 @@ export default class InputForm extends React.Component {
         });
     }
 
-    handleSnackBarClose(event, reason){
-        if(reason === 'clickaway'){
-            return;
-        }
-
-        this.setState({
-            snackBarMessage : '',
-            snackBarOpen : false,
-        });
+    notProperlyFilled(){
+        return this.state.amount === '0' || this.state.info === '' || this.state.ship === '';
     }
 
     render() {
         return (
-            <React.Fragment>
-                <Snackbar
-                    key={this.state.snackBarMessage}
-                    autoHideDuration={3000}
-                    open={this.state.snackBarOpen}
-                    onClose={this.handleSnackBarClose}
-                    ContentProps={{ 'aria-describedby': 'message' }}
-                    anchorOrigin={{
-                        vertical: 'top',
-                        horizontal: 'center',
-                    }}
-                >
-                    <SnackbarContent
-                        key={this.state.snackBarMessage}
-                        message={<span id='message'> {this.state.snackBarMessage} </span>}
-                        action={[<Button key='close' size='small' color='secondary' onClick={this.handleSnackBarClose}> TUTUP </Button>]}
-                    />
-                </Snackbar>
-                
-                <form>
-                    <Grid container direction='row' justify='space-around' alignItems='center' spacing={3} >
-                        <Grid item xs={12}>
-                            <Typography variant='h5' align='center'> Tambahkan Bon </Typography>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField fullWidth select id='transactionSelect' name='transaction' label='Jenis Transaksi' helperText='Pemasukan/Pengeluaran' required style={{ width: '100%' }}
-                                variant='outlined'
-                                value={this.state.transaction}
-                                onChange={this.handleStringChange}
-                                SelectProps={{
-                                    native: true,
-                                }}
-                            >
-                                {
-                                    this.transactionChoices.map((choice) => (
-                                        <option value={choice.value} key={choice.value}>
-                                            {choice.text}
-                                        </option>
-                                    ))
-                                }
-                            </TextField>
-                        </Grid>
-
-                        <Grid item xs={12} md={6}>
-                            <TextField fullWidth id='dateInput' name='date' label='Tanggal (mm/dd/yyyy)' type='date' required style={{ width: '100%' }}
-                                variant='outlined'
-                                helperText='Masukkan tanggal yang tertera di bon'
-                                value={this.state.date}
-                                onChange={this.handleDateChange}
-                            />
-                        </Grid>
-                        
-                        <Grid item xs={12} md={6}>
-                            <TextField fullWidth id='info' name='info' label='Keterangan' type='text' required style={{ width: '100%' }}
-                                variant='outlined'
-                                helperText='Masukkan keterangan bon (max 35 karakter)'
-                                value={decodeURIComponent(this.state.info)}
-                                onChange={this.handleStringChange}
-                                inputProps={{
-                                    maxLength: 35,
-                                }}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12} md={6}>
-                            <TextField fullWidth id='amount' name='amount' label='Jumlah' type='text' required style={{ width: '100%'}}
-                                variant='outlined'
-                                helperText='Masukkan jumlah uang di bon'
-                                onChange={this.handleIntChange}
-                                value={this.formatCurrency(this.state.amount)}
-                                InputProps={{
-                                    startAdornment: <InputAdornment position='start'> Rp. </InputAdornment>,
-                                    inputProps: {
-                                        maxLength: 14,
-                                        pattern: "[0-9]{1,12}"
-                                    }
-                                }}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12}>
-                            <Button variant='contained' color='primary' onClick={this.handleSubmit} size='large' fullWidth>
-                                Konfirmasi
-                            </Button>
-                        </Grid>
+            <form>
+                <Grid container direction='row' justify='space-around' alignItems='center' spacing={3} >
+                    <Grid item xs={12}>
+                        <Typography variant='h5' align='center'> Tambahkan Bon </Typography>
                     </Grid>
-                </form>
-            </React.Fragment>
+                    <Grid item xs={12} md={6}>
+                        <TextField required fullWidth select id='transactionSelect' name='transaction' label='Jenis Transaksi' variant='outlined'
+                            helperText='Pemasukan/Pengeluaran'
+                            value={this.state.transaction}
+                            onChange={this.handleStringChange}
+                            style={{ width: '100%' }}
+                            SelectProps={{
+                                native: true,
+                            }}
+                        >
+                            {
+                                this.transactionChoices.map((choice) => (
+                                    <option value={choice.value} key={choice.value}>
+                                        {choice.text}
+                                    </option>
+                                ))
+                            }
+                        </TextField>
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                        <TextField required fullWidth select id='shipSelect' name='ship' label='Pilih Kapal' variant='outlined'
+                            helperText='Kapal yang berkaitan dengan bon ini'
+                            value={decodeURIComponent(this.state.ship)}
+                            onChange={this.handleStringChange}
+                            style={{ width: '100%' }}
+                            SelectProps={{
+                                native: true,
+                            }}
+                        >
+                            {
+                                this.state.shipList.length === 0 ? 
+                                <option value = ''> </option>
+                                :
+                                this.state.shipList.map((ship) => (
+                                    <option value={decodeURIComponent(ship)} key={ship}>
+                                        {decodeURIComponent(ship)}
+                                    </option>
+                                ))
+                            }
+
+                        </TextField>
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                        <TextField required fullWidth id='dateInput' name='date' label='Tanggal (mm/dd/yyyy)' type='date' variant='outlined'
+                            helperText='Masukkan tanggal yang tertera di bon'
+                            value={this.state.date}
+                            onChange={this.handleDateChange}
+                            style={{ width: '100%' }}
+                        />
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                        <TextField required fullWidth id='info' name='info' label='Keterangan' type='text' variant='outlined'
+                            helperText='Masukkan keterangan bon (max 35 karakter)'
+                            value={decodeURIComponent(this.state.info)}
+                            onChange={this.handleStringChange}
+                            style={{ width: '100%' }}
+                            inputProps={{
+                                maxLength: 35,
+                            }}
+                        />
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                        <TextField required fullWidth id='amount' name='amount' label='Jumlah' type='text' variant='outlined'
+                            helperText='Masukkan jumlah uang di bon'
+                            value={this.formatCurrency(this.state.amount)}
+                            onChange={this.handleIntChange}
+                            style={{ width: '100%' }}
+                            InputProps={{
+                                startAdornment: <InputAdornment position='start'> Rp. </InputAdornment>,
+                                inputProps: {
+                                    maxLength: 14,
+                                    pattern: "[0-9]{1,12}"
+                                }
+                            }}
+                        />
+                    </Grid>
+
+                    <Grid item xs={12}>
+                        <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleSubmit} disabled={this.notProperlyFilled() ? true : false}>
+                            Tambahkan Bon
+                        </Button>
+                    </Grid>
+                </Grid>
+            </form>
         );
     }
 }

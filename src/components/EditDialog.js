@@ -3,15 +3,16 @@ import React from 'react';
 import {DialogContent, DialogTitle, DialogActions, Button, TextField, InputAdornment, Grid} from '@material-ui/core';
 
 export default class EditDialog extends React.Component{
-    constructor(props){
+    constructor(props) {
         super(props);
-
+        
         this.formatCurrency = this.formatCurrency.bind(this);
     }
+    
 
     formatCurrency(numString) {
-        let inputString = numString.split('');
-        let upperLimit = Math.floor(numString.length / 3);
+        let inputString = numString.toString().split('');
+        let upperLimit = Math.floor(numString.toString().length / 3);
         let ctr = 1;
 
         while (ctr <= upperLimit) {
@@ -38,7 +39,7 @@ export default class EditDialog extends React.Component{
                                 variant='outlined'
                                 helperText='Ubah keterangan bon (max 35 karakter)'
                                 value={decodeURIComponent(this.props.docInfo)}
-                                onChange={this.props.handleStringChange}
+                                onChange={this.props.stringChange}
                                 inputProps={{
                                     maxLength: 35,
                                 }}
@@ -49,7 +50,7 @@ export default class EditDialog extends React.Component{
                             <TextField fullWidth id='docAmount' name='docAmount' label='Jumlah' type='text' required style={{ width: '100%' }}
                                 variant='outlined'
                                 helperText='Ubah jumlah uang di bon'
-                                onChange={this.props.handleIntChange}
+                                onChange={this.props.intChange}
                                 value={this.formatCurrency(this.props.docAmount)}
                                 InputProps={{
                                     startAdornment: <InputAdornment position='start'> Rp. </InputAdornment>,
@@ -68,7 +69,7 @@ export default class EditDialog extends React.Component{
                         Batal
                     </Button>
                     <Button color='primary' onClick={this.props.editData}>
-                        Konfirmasi
+                        Ubah Bon
                     </Button>
                 </DialogActions>
             </React.Fragment>

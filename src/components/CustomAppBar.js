@@ -1,7 +1,7 @@
 import React from 'react'
 
-import {Drawer, ListItemIcon, ListItem, List, ListItemText, AppBar, Toolbar, IconButton, Typography} from '@material-ui/core';
-import {Home, Search, Menu, AddCircle} from '@material-ui/icons';
+import {Drawer, Divider, ListItemIcon, ListItem, List, ListItemText, AppBar, Toolbar, IconButton, Typography} from '@material-ui/core';
+import {Menu} from '@material-ui/icons';
 import {styled} from '@material-ui/styles';
 
 const AppTitle = styled(Typography)({
@@ -21,30 +21,6 @@ class Navbar extends React.Component {
         this.state = {
             drawerOpen: false,
         };
-
-        this.navLinks = [
-            {
-                id: 'home',
-                link: '/home',
-                icon: <Home />,
-                mainText: 'Bon Terbaru',
-                helpText: '10 Bon Terbaru',
-            },
-            {
-                id: 'add',
-                link: '/add',
-                icon: <AddCircle />,
-                mainText: 'Tambahkan Bon',
-                helpText: 'Tambah Bon baru',
-            },
-            {
-                id: 'show',
-                link: '/show',
-                icon: <Search />,
-                mainText: 'Tampilkan Bon',
-                helpText: 'Cari berdasarkan tanggal',
-            },
-        ];
     }
 
     toggleDrawer() {
@@ -71,12 +47,20 @@ class Navbar extends React.Component {
                     <div role='presentation' onClick={this.toggleDrawer}>
                         <List>
                             {
-                                this.navLinks.map((listItem) => (
-                                    <ListItemLink href={listItem.link} key={listItem.id}>
-                                        <ListItemIcon> {listItem.icon} </ListItemIcon>
-                                        <ListItemText primary={listItem.mainText} secondary={listItem.helpText}/>
-                                    </ListItemLink>
-                                ))
+                                this.props.navLinks.map((listItem) => {
+                                    if(listItem === null){
+                                        return (
+                                            <Divider variant='middle'/>
+                                        );
+                                    } else {
+                                        return (
+                                            <ListItemLink href={listItem.link} key={listItem.id}>
+                                                <ListItemIcon> {listItem.icon} </ListItemIcon>
+                                                <ListItemText primary={listItem.mainText} secondary={listItem.helpText} />
+                                            </ListItemLink>
+                                        );
+                                    }
+                                })
                             }
                         </List>
                     </div>

@@ -2,15 +2,16 @@ import React from 'react';
 
 import {firestore} from '../firebase';
 
-import {Table, TableRow, TableCell, TableHead, TableBody, Grid, Typography} from '@material-ui/core';
+import {Divider, List, ListItem, ListItemText, Grid, Typography} from '@material-ui/core';
 import {red, green} from '@material-ui/core/colors';
-import {spacing} from '@material-ui/system';
 
+//Reimplement this with List
 export default class RecentEntry extends React.Component{
     constructor(props){
         super(props);
 
-        this.renderRowEntry = this.renderRowEntry.bind(this);
+        this.renderListEntry = this.renderListEntry.bind(this);
+        this.formatCurrency = this.formatCurrency.bind(this);
 
         this.state = {
             recentEntries : [],
@@ -41,64 +42,106 @@ export default class RecentEntry extends React.Component{
             inputString.shift();
         }
 
-        return 'Rp.' + inputString.join('');
+        inputString.unshift('Rp. ');
+
+        return inputString.join('');
     }
 
-    renderRowEntry(entry){
-        const info = entry.info;
+    renderListEntry(entry){
+        const year = entry.ref.substring(0, 4);
+        const month= entry.ref.substring(4, 6);
+        const date = entry.ref.substring(6, 8);
+        const type = entry.ref.substring(8);
+
+        const shipName = entry.ship;
+
         const amount = entry.amount;
-        const reference = entry.ref;
-
-        const year = reference.substring(0,4);
-        const month = reference.substring(4,6);
-        const date = reference.substring(6,8);
-        const transactionType = reference.substring(8);
-
-        const style = {
-            background: transactionType === 'i' ? green[300] : red['A100'],
-            padding : '24px',
-        };
+        const info = entry.info;
 
         return(
-            <TableRow key={reference} style={style}>
-                <TableCell align = 'left'> <Typography variant='caption'> {`${date}/${month}/${year}`}  </Typography> </TableCell>
-                <TableCell align = 'center'> <Typography variant='caption'> {decodeURIComponent(info)}    </Typography> </TableCell>
-                <TableCell align = 'right'> <Typography variant='caption'> {this.formatCurrency(amount)} </Typography> </TableCell>
-            </TableRow>
+            <React.Fragment>
+                <ListItem disableGutters key={entry.lastUp}
+                    style={{
+                        paddingLeft: 8,
+                        paddingRight: 8,
+                        background: type === 'i' ? green[300] : red['A200']
+                    }}
+                >
+                    <ListItemText
+                        primary={
+                            <React.Fragment>
+                                <Typography variant='h6' align='left' display='block'>
+                                    {this.formatCurrency(amount)}
+                                </Typography>
+                                <Typography variant='body2' align='left' display='block' style={{paddingTop : 8, paddingBottom:8}}>
+                                    {decodeURIComponent(info)}
+                                </Typography>
+                            </React.Fragment>
+                        }
+                        secondary={`${date}/${month}/${year} | ${decodeURIComponent(shipName)}`}
+                        secondaryTypographyProps={{ variant: 'button', align: 'left', display: 'block' }}
+                    />
+                </ListItem>
+                <Divider component='li' />
+            </React.Fragment>
         );
     }
 
     render(){
         return(
-            <Grid container direction='row' justify='space-evenly' alignItems='center' spacing={6}>
-                <Grid item xs={12}>
-                    <Typography variant='h5' align='center'>
-                        Bon-Bon Paling Baru
-                    </Typography>
-                </Grid>
-                
-                <Grid item xs={12}>
-                    <Table size='small' padding='none'>
-                        <TableHead>
-                            <TableCell align='center'> Tanggal </TableCell>
-                            <TableCell align='center'> Keterangan  </TableCell>
-                            <TableCell align='center' style={{ minWidth: 85}}> Jumlah </TableCell>
-                        </TableHead>
-                        <TableBody>
-                            {
-                                this.state.recentEntries.length === 0 ? 
-                                <TableCell colSpan={3} align='center'> 
-                                    <Typography variant='h6'>
-                                            <em> Tidak ada bon baru </em>
-                                    </Typography>
-                                </TableCell>
-                                :
-                                this.state.recentEntries.map(this.renderRowEntry)
-                            }
-                        </TableBody>
-                    </Table>
-                </Grid>
+            <Grid container justify='center' alignItems='center' spacing={3}>
+                <Grid item xs={12} md={4}/>
+                <Grid container item xs={12} md={4}>
+                    <Grid item xs={12}>
+                        <Typography variant='h5' align='center'> Bon-Bon Terbaru </Typography>
+                    </Grid>
+                    <Grid item xs={12}>
+                        {
+                            this.state.recentEntries.length === 0 ?
+                            <Typography variant='h6' align='center'> Belum ada bon baru </Typography>
+                            :
+                            <List dense style={{ width: '100%' }}>
+                                {
+                                    this.state.recentEntries.map((entry) => this.renderListEntry(entry))
+                                }
+                            </List>
+                        }
+                    </Grid>
+                </Grid>         
+                <Grid item xs={12} md={4}/>
             </Grid>
-        )
+        );
     }
 }
+
+/*
+    <Grid container direction='row' justify='space-evenly' alignItems='center' spacing={6}>
+        <Grid item xs={12}>
+            <Typography variant='h5' align='center'>
+                Bon-Bon Paling Baru
+            </Typography>
+        </Grid>
+
+        <Grid item xs={12}>
+            <Table size='small' padding='none'>
+                <TableHead>
+                    <TableCell align='center'> Tanggal </TableCell>
+                    <TableCell align='center'> Keterangan  </TableCell>
+                    <TableCell align='center' style={{ minWidth: 85}}> Jumlah </TableCell>
+                </TableHead>
+                <TableBody>
+                    {
+                        this.state.recentEntries.length === 0 ?
+                        <TableCell colSpan={3} align='center'>
+                            <Typography variant='h6'>
+                                    <em> Tidak ada bon baru </em>
+                            </Typography>
+                        </TableCell>
+                        :
+                        this.state.recentEntries.map(this.renderRowEntry)
+                    }
+                </TableBody>
+            </Table>
+        </Grid>
+    </Grid>
+*/
