@@ -2,7 +2,7 @@ import React from 'react';
 
 import {firestore} from '../firebase';
 
-import {Divider, List, ListItem, ListItemText, Grid, Typography} from '@material-ui/core';
+import {Divider, List, ListItem, ListItemText, Grid, Typography, Box} from '@material-ui/core';
 import {red, green} from '@material-ui/core/colors';
 
 //Reimplement this with List
@@ -19,12 +19,16 @@ export default class RecentEntry extends React.Component{
     }
 
     componentDidMount(){
+        this.props.showProgressBar();
+
         firestore.collection('recent').doc('entry').onSnapshot((docSnapshot) => {
             if(docSnapshot.exists){
                 this.setState({
                     recentEntries: docSnapshot.data().entries,
                 });
             }
+
+            this.props.closeProgressBar();
         });
     }
 
@@ -89,27 +93,29 @@ export default class RecentEntry extends React.Component{
 
     render(){
         return(
-            <Grid container justify='center' alignItems='center' spacing={3}>
-                <Grid item xs={12} md={4}/>
-                <Grid container item xs={12} md={4}>
-                    <Grid item xs={12}>
-                        <Typography variant='h5' align='center'> Bon-Bon Terbaru </Typography>
+            <Box m={4} px={2} py={4} borderRadius={16} border={1} borderColor='grey.500' alignSelf='center'>
+                <Grid container justify='center' alignItems='center' spacing={3}>
+                    <Grid item xs={12} md={2} />
+                    <Grid container item xs={12} md={8}>
+                        <Grid item xs={12}>
+                            <Typography variant='h5' align='center'> Bon-Bon Terbaru </Typography>
+                        </Grid>
+                        <Grid item xs={12}>
+                            {
+                                this.state.recentEntries.length === 0 ?
+                                    <Typography variant='h6' align='center'> Belum ada bon baru </Typography>
+                                    :
+                                    <List dense style={{ width: '100%' }}>
+                                        {
+                                            this.state.recentEntries.map((entry) => this.renderListEntry(entry))
+                                        }
+                                    </List>
+                            }
+                        </Grid>
                     </Grid>
-                    <Grid item xs={12}>
-                        {
-                            this.state.recentEntries.length === 0 ?
-                            <Typography variant='h6' align='center'> Belum ada bon baru </Typography>
-                            :
-                            <List dense style={{ width: '100%' }}>
-                                {
-                                    this.state.recentEntries.map((entry) => this.renderListEntry(entry))
-                                }
-                            </List>
-                        }
-                    </Grid>
-                </Grid>         
-                <Grid item xs={12} md={4}/>
-            </Grid>
+                    <Grid item xs={12} md={2} />
+                </Grid>
+            </Box>
         );
     }
 }

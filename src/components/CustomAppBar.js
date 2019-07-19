@@ -1,18 +1,9 @@
 import React from 'react'
 
-import {Drawer, Divider, ListItemIcon, ListItem, List, ListItemText, AppBar, Toolbar, IconButton, Typography} from '@material-ui/core';
+import {Fade, LinearProgress, Drawer, Divider, ListItemIcon, ListItem, List, ListItemText, AppBar, Toolbar, IconButton, Typography} from '@material-ui/core';
 import {Menu} from '@material-ui/icons';
-import {styled} from '@material-ui/styles';
 
-const AppTitle = styled(Typography)({
-    flexGrow : 1,
-})
-
-function ListItemLink(props) {
-    return <ListItem button component="a" {...props} />;
-}
-
-class Navbar extends React.Component {
+export default class Navbar extends React.Component {
     constructor(props) {
         super(props);
 
@@ -31,33 +22,36 @@ class Navbar extends React.Component {
 
     render() {
         return (
-            <div>
+            <div style={{flexGrow : 1}}>
                 <AppBar position='static'>
                     <Toolbar>
                         <IconButton disabled color='inherit' size='medium' edge='start' style={{padding : 24}}/>
-                        <AppTitle variant='h5' align='center'>
+                        <Typography variant='h5' align='center' style={{flexGrow: 1}}>
                             Bon Kapal TPI
-                        </AppTitle>
+                        </Typography>
                         <IconButton size='medium' color='secondary' edge='end' onClick={this.toggleDrawer}>
                             <Menu />
                         </IconButton>
                     </Toolbar>
+                    <Fade in={this.props.isLoading} style={{transitionDelay : this.props.isLoading ? '500ms' : '0ms'}}>
+                        <LinearProgress color='secondary' />
+                    </Fade>
                 </AppBar>
                 <Drawer open={this.state.drawerOpen} onClose={this.toggleDrawer} anchor='right'>
                     <div role='presentation' onClick={this.toggleDrawer}>
                         <List>
                             {
-                                this.props.navLinks.map((listItem) => {
+                                this.props.navLinks.map((listItem, idx) => {
                                     if(listItem === null){
                                         return (
-                                            <Divider variant='middle'/>
+                                            <Divider variant='middle' key={`null${idx}`}/>
                                         );
                                     } else {
                                         return (
-                                            <ListItemLink href={listItem.link} key={listItem.id}>
+                                            <ListItem button component='a' href={listItem.link} key={listItem.id}>
                                                 <ListItemIcon> {listItem.icon} </ListItemIcon>
                                                 <ListItemText primary={listItem.mainText} secondary={listItem.helpText} />
-                                            </ListItemLink>
+                                            </ListItem>
                                         );
                                     }
                                 })
@@ -69,9 +63,3 @@ class Navbar extends React.Component {
         );
     }
 }
-
-const CustomAppBar = styled(Navbar)({
-    flexGrow: 1,
-});
-
-export default CustomAppBar;

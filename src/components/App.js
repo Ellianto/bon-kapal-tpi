@@ -1,19 +1,21 @@
 import React from 'react';
 import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
 
-import HomePage from './HomePage'
 import AddShip from './AddShip'
+import HomePage from './HomePage'
 import InputForm from './InputForm'
+import PrintSheet from './PrintSheet'
 import DataDisplay from './DataDisplay'
 import RecentEntry from './RecentEntry'
-import CustomAppBar from './CustomAppBar'
+import Navbar from './CustomAppBar'
 
-import {Box, Snackbar, SnackbarContent, Button} from '@material-ui/core';
-import { History, Search, NoteAdd, PlaylistAdd, Home } from '@material-ui/icons';
+import {Snackbar, SnackbarContent, Button} from '@material-ui/core';
+import {History, Search, NoteAdd, PlaylistAdd, Home, Print } from '@material-ui/icons';
 
-//TODO: Login & Home Page
+//TODO: Login Page
 //TODO: Implement better caching policy
 //TODO: Enable offline access
+//TODO: Make a 404 Page
 
 export default class App extends React.Component{
     constructor(){
@@ -22,6 +24,7 @@ export default class App extends React.Component{
         this.handleSnackBarClose = this.handleSnackBarClose.bind(this);
 
         this.state = {
+            isLoading : false,
             snackBarOpen : false,
             snackBarMessage : '',
         }
@@ -30,11 +33,24 @@ export default class App extends React.Component{
             this.setState({
                 snackBarOpen : true,
                 snackBarMessage : message,
+                isLoading: false,
             });
 
             if(reload){
                 setTimeout(() => window.location.reload(), 2500);
             }
+        }
+
+        this.showProgressBar = () => {
+            this.setState({
+                isLoading: true,
+            });
+        }
+
+        this.closeProgressBar = () => {
+            this.setState({
+                isLoading: false,
+            });
         }
 
         this.navLinks = [
@@ -45,23 +61,6 @@ export default class App extends React.Component{
                 mainText: 'Home',
                 helpText: 'Halaman Utama',
                 descText: '',
-            },
-            null,
-            {
-                id: 'recent',
-                link: '/recent',
-                icon: <History />,
-                mainText: 'Bon Terbaru',
-                helpText: '10 Bon Terbaru',
-                descText: 'Halaman untuk menampilkan 10 bon terakhir yang disimpan. Dari halaman ini, anda bisa memantau langsung penambahan bon-bon baru',
-            },
-            {
-                id: 'show',
-                link: '/show',
-                icon: <Search />,
-                mainText: 'Tampilkan Bon',
-                helpText: 'Cari berdasarkan tanggal',
-                descText: 'Halaman untuk mencari bon. Di halaman ini, anda bisa menampilkan kumpulan bon dari kapal tertentu pada tanggal/bulan/tahun tertentu',
             },
             null,
             {
@@ -80,6 +79,31 @@ export default class App extends React.Component{
                 helpText: 'Tambahkan Kapal Baru',
                 descText: 'Halaman untuk mendaftarkan kapal baru. Pastikan anda sudah menambahkan kapal yang anda inginkan sebelum menambahkan bon terkait kapal tersebut.',
             },
+            null,
+            {
+                id: 'recent',
+                link: '/recent',
+                icon: <History />,
+                mainText: 'Bon Terbaru',
+                helpText: '10 Bon Terbaru',
+                descText: 'Halaman untuk menampilkan 10 bon terakhir yang disimpan. Dari halaman ini, anda bisa memantau langsung penambahan bon-bon baru',
+            },
+            {
+                id: 'show',
+                link: '/show',
+                icon: <Search />,
+                mainText: 'Tampilkan Bon',
+                helpText: 'Cari berdasarkan tanggal',
+                descText: 'Halaman untuk mencari bon. Di halaman ini, anda bisa menampilkan kumpulan bon dari kapal tertentu pada tanggal/bulan/tahun tertentu',
+            },
+            {
+                id: 'print',
+                link: '/print',
+                icon: <Print />,
+                mainText: 'Tutup Buku',
+                helpText: 'Rekap Tahunan/Bulanan',
+                descText: 'Halaman untuk menampilkan hasil rekap tahunan/bulanan untuk kapal yang dicari dalam bentuk tabel yang rapi. Tabel tersebut kemudian dapat dicetak/diprint'
+            },
         ];
     }
 
@@ -97,7 +121,7 @@ export default class App extends React.Component{
     render(){
         return(
             <Router>
-                <CustomAppBar navLinks={this.navLinks}/>
+                <Navbar isLoading={this.state.isLoading} navLinks={this.navLinks}/>
                 <Snackbar
                     autoHideDuration={2000}
                     key={this.state.snackBarMessage}
@@ -115,15 +139,14 @@ export default class App extends React.Component{
                         action={[<Button key='close' size='small' color='secondary' onClick={this.handleSnackBarClose}> TUTUP </Button>]}
                     />
                 </Snackbar>
-                <Box m={4} px={2} py={4} borderRadius={16} border={1} borderColor='grey.500'>
-                    <Switch>
-                        <Route path='/' exact render={props => <HomePage {...props} navLinks={this.navLinks} />} />
-                        <Route path='/add_bon' exact render={props => <InputForm {...props} openSnackBar={this.openSnackBar} />} />
-                        <Route path='/show' exact render={props => <DataDisplay {...props} openSnackBar={this.openSnackBar} />} />
-                        <Route path='/add_ship' exact render={props => <AddShip {...props} openSnackBar={this.openSnackBar} />} />
-                        <Route path='/recent' exact component={RecentEntry}/>
-                    </Switch>
-                </Box>
+                <Switch>
+                    <Route exact path='/'         render={props => <HomePage    {...props} navLinks={this.navLinks} />} />
+                    <Route exact path='/add_bon'  render={props => <InputForm   {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> } />
+                    <Route exact path='/show'     render={props => <DataDisplay {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> } />
+                    <Route exact path='/add_ship' render={props => <AddShip     {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> } />
+                    <Route exact path='/print'    render={props => <PrintSheet  {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> }/>
+                    <Route exact path='/recent'   render={props => <RecentEntry {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} /> } />
+                </Switch>
             </Router>
         );
     }

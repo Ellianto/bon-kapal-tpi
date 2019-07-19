@@ -4,7 +4,7 @@ import firebase, {firestore} from '../firebase'
 import BillCard from './BillCard'
 import EditDialog from './EditDialog';
 
-import {Grid, TextField, Button, Dialog, Typography} from '@material-ui/core'
+import {Box, Grid, TextField, Button, Dialog, Typography} from '@material-ui/core'
 
 //TODO: Implement Loading UI
 
@@ -102,8 +102,9 @@ export default class DataDisplay extends React.Component {
 	}
 
 	componentDidMount() {
+		this.props.showProgressBar();
+
 		const shipRef = firestore.collection('ship');
-		//TODO: Fix the URIComponent Decoding Problem
 
 		shipRef.get().then((querySnapshot) => {
 			let shipList = [];
@@ -114,8 +115,10 @@ export default class DataDisplay extends React.Component {
 
 			this.setState({
 				shipList: shipList,
-				shipName: shipList[0],
+				shipName: shipList.length === 0 ? '' : shipList[0],
 			});
+
+			this.props.closeProgressBar();
 		});
 	}
 
@@ -135,7 +138,6 @@ export default class DataDisplay extends React.Component {
 	}
 
 	closeDialog() {
-
 		this.setState({
 			modalOpen: false,
 			type: '',
@@ -149,6 +151,8 @@ export default class DataDisplay extends React.Component {
 	}
 
 	fetchData(){
+		this.props.showProgressBar();
+
 		const shipName = this.state.shipName;
 
 		const theYear = this.state.chosenYear.toString();
@@ -193,14 +197,20 @@ export default class DataDisplay extends React.Component {
 					shownShip : shipName,
 					submitted : true,
 				});
+				this.props.closeProgressBar();
+			} else {
+				throw new Error('Terjadi kesalahan! Coba lagi dalam beberapa saat!');
 			}
+
 		}).catch((err) => {
-			console.error(err);
+			console.error(err.message);
 			this.props.openSnackBar('Terjadi kesalahan! Coba lagi dalam beberapa saat!');
 		});
 	}
 
 	editData() {
+		this.props.showProgressBar();
+
 		const oldInfo = this.state.docOldInfo;
 		const oldAmount = parseInt(this.state.docOldAmount, 10);
 
@@ -267,7 +277,7 @@ export default class DataDisplay extends React.Component {
 			let docValue = editDoc.data();
 
 			if (!aggregationDoc.exists || !recentDoc.exists || !dateDoc.exists || !editDoc.exists || !shipDoc.exists) {
-				throw 'Document not found';
+				throw new Error('Document not found');
 			}
 
 			docValue.info = newInfo;
@@ -346,12 +356,14 @@ export default class DataDisplay extends React.Component {
 			this.props.openSnackBar('Data berhasil diubah!');
 			this.reloadList();
 		}).catch((err) => {
-			console.error(err);
+			console.error(err.message);
 			this.props.openSnackBar('Terjadi kesalahan! Coba lagi dalam beberapa saat');
 		});
 	}
 
 	deleteData(docId, date, type) {
+		this.props.showProgressBar();
+
 		const documentFullDate = date.substring(0, 8);
 		const documentYear = documentFullDate.substring(0, 4);
 		const documentMonth = documentFullDate.substring(4, 6);
@@ -376,7 +388,7 @@ export default class DataDisplay extends React.Component {
 			]);
 
 			if (!recentDoc.exists || !aggregationDoc.exists || !chosenDoc.exists || !shipDoc.exists) {
-				throw 'Invalid Document';
+				throw new Error('Invalid Document');
 			}
 
 			let recentArr = recentDoc.data().entries;
@@ -424,13 +436,10 @@ export default class DataDisplay extends React.Component {
 
 			return Promise.resolve(true);
 		}).then(() => {
-			console.log('Delete Success!');
-
 			this.props.openSnackBar('Data berhasil dihapus!');
 			this.reloadList();
 		}).catch((err) => {
-			console.error(err);
-
+			console.error(err.message);
 			this.props.openSnackBar('Terjadi kesalahan! Coba lagi dalam beberapa saat');
 		});
 	}
@@ -474,95 +483,97 @@ export default class DataDisplay extends React.Component {
 						closeDialog={this.closeDialog}
 					/>
 				</Dialog>
-				<Grid container direction='row' justify='space-evenly' alignItems='center' spacing={6}>
-					<Grid container item direction='row' justify='space-around' alignItems='center' spacing={3} xs={12}>
-						<Grid item xs={12} md={4}>
-							<TextField required fullWidth select id='shipSelect' name='shipName' label='Nama Kapal' variant='outlined'
-								helperText='Nama Kapal yang ingin dicari bonnya'
-								value={decodeURIComponent(this.state.shipName)}
-								onChange={this.handleStringChange}
-								style={{ width: '100%' }}
-								SelectProps={{
-									native: true,
-								}}
-							>
-								{
-									this.state.shipList.length === 0 ?
-										<option value=''> </option>
-										:
-										this.state.shipList.map((ship) => (
-											<option value={decodeURIComponent(ship)} key={ship}>
-												{decodeURIComponent(ship)}
+				<Box m={4} px={2} py={4} borderRadius={16} border={1} borderColor='grey.500'>
+					<Grid container direction='row' justify='space-evenly' alignItems='center' spacing={6}>
+						<Grid container item direction='row' justify='space-around' alignItems='center' spacing={3} xs={12}>
+							<Grid item xs={12} md={4}>
+								<TextField required fullWidth select id='shipSelect' name='shipName' label='Nama Kapal' variant='outlined'
+									helperText='Nama Kapal yang ingin dicari bonnya'
+									value={decodeURIComponent(this.state.shipName)}
+									onChange={this.handleStringChange}
+									style={{ width: '100%' }}
+									SelectProps={{
+										native: true,
+									}}
+								>
+									{
+										this.state.shipList.length === 0 ?
+											<option value=''> </option>
+											:
+											this.state.shipList.map((ship) => (
+												<option value={decodeURIComponent(ship)} key={ship}>
+													{decodeURIComponent(ship)}
+												</option>
+											))
+									}
+								</TextField>
+							</Grid>
+							<Grid item xs={12} md={4}>
+								<TextField required fullWidth select id='yearSelect' name='chosenYear' label='Tahun' variant='outlined'
+									helperText='Tahun dari bon yang ingin dicari'
+									value={this.state.chosenYear}
+									onChange={this.handleIntChange}
+									style={{ width: '100%' }}
+									SelectProps={{
+										native: true,
+									}}
+								>
+									{
+										this.years.map((year) => (
+											<option value={year} key={year}>
+												{year}
 											</option>
 										))
-								}
-							</TextField>
+									}
+								</TextField>
+							</Grid>
+							<Grid item xs={12} md={4}>
+								<TextField required fullWidth select id='monthSelect' name='chosenMonth' label='Bulan' variant='outlined'
+									helperText='Bulan dari bon yang ingin dicari'
+									value={this.state.chosenMonth}
+									onChange={this.handleIntChange}
+									style={{ width: '100%' }}
+									SelectProps={{
+										native: true,
+									}}
+								>
+									{
+										this.months.map((month) => (
+											<option value={month.value} key={month.name}>
+												{month.name}
+											</option>
+										))
+									}
+								</TextField>
+							</Grid>
 						</Grid>
-						<Grid item xs={12} md={4}>
-							<TextField required fullWidth select id='yearSelect' name='chosenYear' label='Tahun' variant='outlined'
-								helperText='Tahun dari bon yang ingin dicari'
-								value={this.state.chosenYear}
-								onChange={this.handleIntChange}
-								style={{ width: '100%' }}
-								SelectProps={{
-									native: true,
-								}}
-							>
-								{
-									this.years.map((year) => (
-										<option value={year} key={year}>
-											{year}
-										</option>
-									))
-								}
-							</TextField>
-						</Grid>
-						<Grid item xs={12} md={4}>
-							<TextField required fullWidth select id='monthSelect' name='chosenMonth' label='Bulan' variant='outlined'
-								helperText='Bulan dari bon yang ingin dicari'
-								value={this.state.chosenMonth}
-								onChange={this.handleIntChange}
-								style={{ width: '100%' }}
-								SelectProps={{
-									native: true,
-								}}
-							>
-								{
-									this.months.map((month) => (
-										<option value={month.value} key={month.name}>
-											{month.name}
-										</option>
-									))
-								}
-							</TextField>
+						<Grid item xs={12}>
+							<Button fullWidth variant='contained' color='primary' size='large' onClick={this.fetchData} disabled={this.state.shipName === '' ? true : false}>
+								Cari Bon
+							</Button>
 						</Grid>
 					</Grid>
-					<Grid item xs={12}>
-						<Button fullWidth variant='contained' color='primary' size='large' onClick={this.fetchData} disabled={this.state.shipName === '' ? true : false}>
-							Cari Bon
-						</Button>
-					</Grid>
-					<Grid container item justify='center' alignItems='stretch' spacing={3} xs={12}>
-						{
-							this.state.items.length === 0 ? 
+				</Box>
+				<Grid container justify='center' alignItems='stretch' spacing={3} xs={12}>
+					{
+						this.state.items.length === 0 ?
 							(
-								this.state.submitted ? 
-								<Typography variant='h5'> Tidak ditemukan bon dengan kriteria tersebut </Typography>
-								: null
+								this.state.submitted ?
+									<Typography variant='h5'> Tidak ditemukan bon dengan kriteria tersebut </Typography>
+									: null
 							)
 							:
 							this.state.items.map((mapObj) => (
 								<Grid item xs={12} md={4} key={mapObj[0]}>
-									<BillCard 
-										itemKey={mapObj[0]} 
-										itemValue={mapObj[1]} 
+									<BillCard
+										itemKey={mapObj[0]}
+										itemValue={mapObj[1]}
 										displayDialog={this.displayDialog}
 										deleteData={this.deleteData}
 									/>
 								</Grid>
 							))
-						}
-					</Grid>
+					}
 				</Grid>
 			</React.Fragment>
 		);

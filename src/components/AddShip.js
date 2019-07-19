@@ -2,7 +2,7 @@ import React from 'react';
 
 import {firestore} from '../firebase';
 
-import {Grid, Typography, TextField, Button} from '@material-ui/core';
+import {Grid, Typography, TextField, Button, Box} from '@material-ui/core';
 
 export default class AddShip extends React.Component {
     constructor(props){
@@ -10,15 +10,34 @@ export default class AddShip extends React.Component {
 
         this.handleStringChange = this.handleStringChange.bind(this);
         this.addShip = this.addShip.bind(this);
+        this.formatDate = this.formatDate.bind(this);
 
         this.state = {
             shipName : '',
-            snackBarMessage : '',
-            snackBarOpen : false,
         };
     }
 
+    formatDate() {
+        const now = new Date();
+
+        let thisYear = now.getFullYear().toString();
+        let thisMonth = (now.getMonth() + 1).toString();
+        let thisDate = now.getDate().toString();
+
+        if (thisMonth.length === 1) {
+            thisMonth = '0' + thisMonth;
+        }
+
+        if (thisDate.length === 1) {
+            thisDate = '0' + thisDate;
+        }
+
+        return `${thisYear}${thisMonth}${thisDate}`;
+    }
+
     addShip(){
+        this.props.showProgressBar();
+
         const shipName = this.state.shipName;
 
         if(shipName === ''){
@@ -32,10 +51,12 @@ export default class AddShip extends React.Component {
             if(docSnapshot.exists){
                 this.props.openSnackBar('Nama tersebut sudah digunakan! Pilih nama kapal baru');
             } else {
+
                 shipRef.set({
                     lastUp: (new Date()).valueOf(),
                     isum: 0,
                     osum: 0,
+                    lastBook: '',
                 }, {merge : true}).then(() => {
                     this.setState({
                         shipName : '',
@@ -46,7 +67,6 @@ export default class AddShip extends React.Component {
             }
         }).catch((err) => {
             console.error(err);
-
             this.props.openSnackBar('Terjadi kesalahan! Coba lagi dalam beberapa saat!');            
         });
     }
@@ -59,7 +79,7 @@ export default class AddShip extends React.Component {
 
     render(){
         return(
-            <React.Fragment>
+            <Box m={4} px={2} py={4} borderRadius={16} border={1} borderColor='grey.500'>
                 <Grid container direction='row' justify='space-around' alignItems='center' spacing={3}>
                     <Grid item xs={12}>
                         <Typography variant='h5' align='center'> Tambahkan Kapal </Typography>
@@ -81,7 +101,7 @@ export default class AddShip extends React.Component {
                         </Button>
                     </Grid>
                 </Grid>
-            </React.Fragment>
+            </Box>
         );
     }
 };

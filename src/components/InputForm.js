@@ -2,7 +2,7 @@ import React from 'react'
 
 import {firestore} from '../firebase';
 
-import {TextField, InputAdornment, Button, Grid, Typography} from '@material-ui/core';
+import {TextField, InputAdornment, Button, Grid, Typography, Box} from '@material-ui/core';
 
 //TODO: Implement Loading UI
 
@@ -33,13 +33,15 @@ export default class InputForm extends React.Component {
             ship: '',
             info: '',
             amount: '0',
-            transaction: 'pemasukan',
+            transaction: 'pengeluaran',
             date: this.formatDate(),
             shipList : [],
         };
     }
 
     componentDidMount(){
+        this.props.showProgressBar();
+
         const shipRef = firestore.collection('ship');
         
         shipRef.get().then((querySnapshot) => {
@@ -53,6 +55,8 @@ export default class InputForm extends React.Component {
                 shipList : shipList,
                 ship : shipList[0],
             });
+
+            this.props.closeProgressBar();
         });
     }
 
@@ -93,6 +97,7 @@ export default class InputForm extends React.Component {
 
     handleSubmit(e) {
         e.preventDefault();
+		this.props.showProgressBar();
 
         if(this.state.info === ''){
             this.props.openSnackBar('Pastikan keterangan tidak kosong!');
@@ -209,7 +214,7 @@ export default class InputForm extends React.Component {
             return Promise.resolve(true);
         }).then(() => {
             this.setState({
-                transaction: 'pemasukan',
+                transaction: 'pengeluaran',
                 date : this.formatDate(),
                 info: '',
                 amount: '0',
@@ -217,7 +222,7 @@ export default class InputForm extends React.Component {
 
             this.props.openSnackBar('Bon berhasil ditambahkan!');
         }).catch((err) => {
-            console.error(err);
+            console.error(err.message);
             this.props.openSnackBar('Terjadi kesalahan ketika menyimpan bon! Coba lagi dalam beberapa saat');
         });
     }
@@ -246,7 +251,7 @@ export default class InputForm extends React.Component {
 
     render() {
         return (
-            <form>
+            <Box m={4} px={2} py={4} borderRadius={16} border={1} borderColor='grey.500'>
                 <Grid container direction='row' justify='space-around' alignItems='center' spacing={3} >
                     <Grid item xs={12}>
                         <Typography variant='h5' align='center'> Tambahkan Bon </Typography>
@@ -338,7 +343,7 @@ export default class InputForm extends React.Component {
                         </Button>
                     </Grid>
                 </Grid>
-            </form>
+            </Box>
         );
     }
 }
