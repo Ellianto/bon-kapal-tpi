@@ -2,115 +2,28 @@ import React from 'react';
 import ReactToPrint from 'react-to-print';
 
 import firebase, {firestore} from '../firebase'
+import PrintableTable from './PrintableTable'
 
-import { Box, Grid, TextField, Chip, Button, Typography, Table, TableHead, TableBody, TableRow, TableCell,} from '@material-ui/core';
-import { TrendingDown, TrendingUp, TrendingFlat } from '@material-ui/icons';
-import { green, red } from '@material-ui/core/colors';
+import { Box, Grid, TextField, Button, Typography, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions} from '@material-ui/core';
 
-class PrintableTable extends React.Component{
-    render(){
-        return(
-            <Box>
-                <Box m={2}>
-                    <Grid container justify='flex-start' alignContent='space-around' spacing={2}>
-                        <Grid item xs={12}>
-                            <Typography variant='h5' align='left' display='inline' style={{marginRight : 6}}>
-                                Pembukuan Kapal {decodeURIComponent(this.props.shownShip)}
-                            </Typography>
-
-                            {
-                                this.props.greenSum > this.props.redSum ?
-                                    <Chip label={'Profit : ' + (this.props.formatCurrency(this.props.redSum - this.props.greenSum))} icon={<TrendingUp />} style={{ backgroundColor: green[300] }} />
-                                    :
-                                    (
-                                        this.props.redSum > this.props.greenSum ?
-                                            <Chip label={'Defisit : ' + (this.props.formatCurrency(this.props.redSum - this.props.greenSum))} icon={<TrendingDown />} style={{ backgroundColor: red['A200'] }} />
-                                            :
-                                            <Chip label={'Stagnan'} icon={<TrendingFlat />} />
-                                    )
-                            }
-
-                            <Typography variant='h6' align='left'>
-                                Periode {this.props.printDate(this.props.formatDate())}
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={3}>
-                            <Typography variant='subtitle1' align='left'> Pemasukan : </Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={3}>
-                            <Typography variant='subtitle1' align='right' style={{ color: green[700] }}> {this.props.formatCurrency(this.props.greenSum)} </Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={3}>
-                            <Typography variant='subtitle1' align='left'> Pengeluaran : </Typography>
-                        </Grid>
-                        <Grid item xs={6} sm={3}>
-                            <Typography variant='subtitle1' align='right' style={{ color: red['A700'] }}> {this.props.formatCurrency(this.props.redSum)} </Typography>
-                        </Grid>
-                    </Grid>
-                </Box>
-                <Table size='small'>
-                    <TableHead>
-                        <TableCell align='center' width='10%'> <Typography variant='body1'> <b> TANGGAL     </b> </Typography> </TableCell>
-                        <TableCell align='center' width='40%'> <Typography variant='body1'> <b> KETERANGAN  </b> </Typography> </TableCell>
-                        <TableCell align='center' width='25%'> <Typography variant='body1'> <b> DEBIT       </b> </Typography> </TableCell>
-                        <TableCell align='center' width='25%'> <Typography variant='body1'> <b> KREDIT      </b> </Typography> </TableCell>
-                    </TableHead>
-
-                    <TableBody>
-                        {
-                            this.props.aggrData.map(([key, value]) => {
-                                return value.map((doc) => {
-                                    return (
-                                        <TableRow key={doc.docId}>
-                                            <TableCell align='center'> {this.props.printDate(key)} </TableCell>
-                                            <TableCell align='center'> {decodeURIComponent(doc.info)} </TableCell>
-                                            <TableCell align='right'>  {doc.type === 'i' ? this.props.formatCurrency(doc.amount) : '-'} </TableCell>
-                                            <TableCell align='right'>  {doc.type === 'o' ? this.props.formatCurrency(doc.amount) : '-'} </TableCell>
-                                        </TableRow>
-                                    );
-                                });
-                            })
-                        }
-                        <TableRow>
-                            <TableCell align='center' colSpan={2}>
-                                <Typography variant='body1'>
-                                    <b> Total </b>
-                                </Typography>
-                            </TableCell>
-                            <TableCell align='right'>
-                                <Typography variant='body1' style={{ color: green[700] }}>
-                                    <b> {this.props.formatCurrency(this.props.greenSum)} </b>
-                                </Typography>
-                            </TableCell>
-                            <TableCell align='right'>
-                                <Typography variant='body1' style={{ color: red['A700'] }}>
-                                    <b> {this.props.formatCurrency(this.props.redSum)} </b>
-                                </Typography>
-                            </TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
-            </Box>
-        );
-    }
-}
-
-
-export default class PrintSheet extends React.Component {
+export default class MakeBook extends React.Component {
     constructor(props) {
         super(props);
 
+        this.openBook = this.openBook.bind(this);
         this.closeBook = this.closeBook.bind(this);
         this.printDate = this.printDate.bind(this);
         this.formatDate = this.formatDate.bind(this);
-        this.formatCurrency = this.formatCurrency.bind(this);
         this.handleStringChange = this.handleStringChange.bind(this);
+        this.handleDialogOpen = this.handleDialogOpen.bind(this);
+        this.handleDialogClose = this.handleDialogClose.bind(this);
 
         this.state = {
+            bookList: [],
+            bookId : '',
             aggrData: [],
             greenSum: 0,
             redSum: 0,
-            startDate: '',
             shipList: [],
             shipName: '',
             shownShip: '',
@@ -164,23 +77,92 @@ export default class PrintSheet extends React.Component {
         return `${thisYear}${thisMonth}${thisDate}`;
     }
 
-    formatCurrency(numString) {
-        let inputString = numString.toString().split('');
-        let upperLimit = Math.floor(numString.toString().length / 3);
-        let ctr = 1;
+    openBook(){
+        const bookArr = this.state.bookList;
+        const chosenId = this.state.bookId;
 
-        while (ctr <= upperLimit) {
-            inputString.splice((-3 * ctr) - ctr + 1, 0, '.');
-            ctr++;
+        const chosenBook = bookArr.find((book) => {
+            return book.endDate === chosenId;
+        });
+
+        const shipName = this.state.shipName;
+        const shipRef = firestore.collection('ship').doc(shipName);
+
+        let bonRef;
+
+        if (chosenBook.startDate === '') {
+            bonRef = shipRef.collection('bon')
+                .where(firebase.firestore.FieldPath.documentId(), '<=', chosenBook.endDate);
+        } else {
+            bonRef = shipRef.collection('bon')
+                .where(firebase.firestore.FieldPath.documentId(), '>', chosenBook.startDate)
+                .where(firebase.firestore.FieldPath.documentId(), '<=', chosenBook.endDate);
         }
 
-        if (inputString[0] === '.') {
-            inputString.shift();
-        }
+        bonRef.get().then(async(querySnapshot) => {
+            const iQuery = bonRef.firestore.collectionGroup('i');
+            const oQuery = bonRef.firestore.collectionGroup('o');
+           
+            const [iDocs, oDocs] = await Promise.all([
+                iQuery.get(),
+                oQuery.get(),
+            ]);
 
-        inputString.unshift('Rp. ');
+            const dateArr = querySnapshot.docs;
+            const iArr = iDocs.docs;
+            const oArr = oDocs.docs;
 
-        return inputString.join('');
+            let tempMap = new Map();
+
+            for (const dateDoc of dateArr) {
+                let dateList = [];
+                const dateKey = dateDoc.id;
+
+                for (const iData of iArr) {
+                    if (iData.ref.parent.parent.id === dateKey) {
+                        const data = iData.data();
+                        const docId = iData.id;
+
+                        dateList.push({
+                            docId: docId,
+                            type: 'i',
+                            info: data.info,
+                            amount: data.amount,
+                        });
+                    }
+                }
+
+                for (const oData of oArr) {
+                    if (oData.ref.parent.parent.id === dateKey) {
+                        const data = oData.data();
+                        const docId = oData.id;
+
+                        dateList.push({
+                            docId: docId,
+                            type: 'o',
+                            info: data.info,
+                            amount: data.amount,
+                        });
+                    }
+                }
+
+                tempMap.set(dateKey, dateList);
+            };
+
+            this.setState({
+                aggrData: Array.from(tempMap),
+                greenSum: chosenBook.isum,
+                redSum: chosenBook.osum,
+                shownShip: shipName,
+                submitted: true,
+                openDialog: false,
+            });
+
+            this.props.openSnackBar('Menampilkan buku...');
+        }).catch((err) => {
+            console.error(err.message);
+            this.props.openSnackBar('Terjadi kesalahan ketika menampilkan buku! Coba lagi dalam beberapa saat!');
+        })
     }
 
     closeBook() {
@@ -206,7 +188,7 @@ export default class PrintSheet extends React.Component {
                     .where(firebase.firestore.FieldPath.documentId(), '<=', endDate);
             } else {
                 bonRef = shipRef.collection('bon')
-                    .where(firebase.firestore.FieldPath.documentId(), '>=', startDate)
+                    .where(firebase.firestore.FieldPath.documentId(), '>', startDate)
                     .where(firebase.firestore.FieldPath.documentId(), '<=', endDate);
             }
 
@@ -230,6 +212,7 @@ export default class PrintSheet extends React.Component {
                 endDate: endDate,
                 isum: shipData.isum,
                 osum: shipData.osum,
+
             }, { merge: true });
 
             transaction.set(shipRef, {
@@ -239,9 +222,9 @@ export default class PrintSheet extends React.Component {
                 lastBook: endDate,
             }, { merge: true });
 
-            return [bonQuery.docs, iDocs.docs, oDocs.docs, shipData.isum, shipData.osum, startDate];
+            return [bonQuery.docs, iDocs.docs, oDocs.docs, shipData.isum, shipData.osum];
 
-        }).then(([dateArr, iArr, oArr, greenSum, redSum, startDate]) => {
+        }).then(([dateArr, iArr, oArr, greenSum, redSum]) => {
             if (dateArr.length === 0) {
                 this.setState({
                     submitted: true,
@@ -292,7 +275,7 @@ export default class PrintSheet extends React.Component {
                     redSum: redSum,
                     shownShip: shipName,
                     submitted: true,
-                    startDate: startDate,
+                    openDialog: false,
                 });
 
                 this.props.openSnackBar('Tutup Buku Berhasil! Membuka buku baru...');
@@ -300,7 +283,7 @@ export default class PrintSheet extends React.Component {
         }).catch((err) => {
             console.error(err.message);
             this.props.openSnackBar('Gagal Tutup Buku! Coba lagi dalam beberapa saat!');
-        })
+        });
     }
 
     handleStringChange(e) {
@@ -310,12 +293,51 @@ export default class PrintSheet extends React.Component {
         });
     }
 
+    handleDialogOpen(e){
+        const shipName = this.state.shipName;
+
+        const booksRef = firestore.collection('ship').doc(shipName).collection('book');
+
+        booksRef.get().then((querySnapshot) => {
+            if(!querySnapshot.empty){
+                const bookArr = [];
+
+                querySnapshot.forEach((book) => {
+                    const data = book.data();
+                    
+                    bookArr.push({
+                        startDate : data.startDate,
+                        endDate : data.endDate,
+                        isum : data.isum,
+                        osum : data.osum,
+                    })
+                });
+
+                this.setState({
+                    bookList : bookArr,
+                    bookId : bookArr[0].endDate,
+                    openDialog: true,
+                });
+            }
+        }).catch((err) => {
+            this.props.openSnackBar('Terjadi kesalahan ketika mengambil daftar buku! Silahkan coba lagi!');
+        });
+    }
+
+    handleDialogClose(e){
+        this.setState({
+            openDialog : false,
+            bookId : '',
+            bookList : [],
+        });
+    }
+
     render() {
         return (
             <React.Fragment>
                 <Box m={4} px={2} py={4} borderRadius={16} border={1} borderColor='grey.500'>
                     <Grid container justify='flex-start' alignItems='stretch' spacing={2}>
-                        <Grid item xs={12}>
+                        <Grid item xs={12} md={8}>
                             <TextField required fullWidth select id='shipSelect' name='shipName' label='Nama Kapal' variant='outlined'
                                 helperText='Nama Kapal yang ingin direkap bonnya'
                                 value={decodeURIComponent(this.state.shipName)}
@@ -337,8 +359,47 @@ export default class PrintSheet extends React.Component {
                                 }
                             </TextField>
                         </Grid>
+                        <Grid item xs={12} md={4}>
+                            <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleDialogOpen} disabled={this.state.shipName === '' ? true : false}>
+                                Tampilkan Buku
+                            </Button>
+                            <Dialog open={this.state.openDialog} onClose={this.handleDialogClose}>
+                                <DialogTitle>
+                                    Pilih Buku untuk Dibuka
+                                </DialogTitle>
+                                <DialogContent>
+                                    <DialogContentText>
+                                        Pilih buku yang ingin dibuka dari kapal {decodeURIComponent(this.state.shipName)}
+                                    </DialogContentText>
+                                    <TextField required fullWidth select id='bookSelect' name='bookId' variant='outlined'
+                                        helperText='Periode Buku yang ingin dibuka'
+                                        value={this.state.bookId}
+                                        onChange={this.handleStringChange}
+                                        style={{ width: '100%' }}
+                                        SelectProps={{
+                                            native: true,
+                                        }}
+                                    >
+                                        {
+                                            this.state.bookList.length === 0 ?
+                                                <option value=''> Belum ada buku untuk kapal ini </option>
+                                                :
+                                                this.state.bookList.map((book) => (
+                                                    <option value={book.endDate} key={book.endDate}>
+                                                        {`Periode ${this.printDate(book.endDate)}`}
+                                                    </option>
+                                                ))
+                                        }
+                                    </TextField>
+                                </DialogContent>
+                                <DialogActions>
+                                    <Button color='secondary' onClick={this.handleDialogClose}> Batal </Button>
+                                    <Button color='primary' onClick={this.openBook} disabled={this.state.bookId === '' ? true : false}> Tampilkan Buku </Button>
+                                </DialogActions>
+                            </Dialog>
+                        </Grid>
                         <Grid item xs={12}>
-                            <Button fullWidth variant='contained' color='primary' size='large' onClick={this.closeBook} disabled={this.state.shipName === '' ? true : false}>
+                            <Button fullWidth variant='contained' color='primary' size='large' onClick={() => this.closeBook()} disabled={this.state.shipName === '' ? true : false}>
                                 Tutup Buku
                             </Button>
                         </Grid>

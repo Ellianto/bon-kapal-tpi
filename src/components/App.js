@@ -4,7 +4,7 @@ import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
 import AddShip from './AddShip'
 import HomePage from './HomePage'
 import InputForm from './InputForm'
-import PrintSheet from './PrintSheet'
+import MakeBook from './MakeBook'
 import DataDisplay from './DataDisplay'
 import RecentEntry from './RecentEntry'
 import Navbar from './CustomAppBar'
@@ -144,7 +144,7 @@ export default class App extends React.Component{
                     <Route exact path='/add_bon'  render={props => <InputForm   {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> } />
                     <Route exact path='/show'     render={props => <DataDisplay {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> } />
                     <Route exact path='/add_ship' render={props => <AddShip     {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> } />
-                    <Route exact path='/print'    render={props => <PrintSheet  {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> }/>
+                    <Route exact path='/print'    render={props => <MakeBook  {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> }/>
                     <Route exact path='/recent'   render={props => <RecentEntry {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} /> } />
                 </Switch>
             </Router>

@@ -6,8 +6,6 @@ import EditDialog from './EditDialog';
 
 import {Box, Grid, TextField, Button, Dialog, Typography} from '@material-ui/core'
 
-//TODO: Implement Loading UI
-
 export default class DataDisplay extends React.Component {
 	constructor(props){
 		super(props);

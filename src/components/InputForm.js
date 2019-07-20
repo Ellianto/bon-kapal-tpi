@@ -4,8 +4,6 @@ import {firestore} from '../firebase';
 
 import {TextField, InputAdornment, Button, Grid, Typography, Box} from '@material-ui/core';
 
-//TODO: Implement Loading UI
-
 export default class InputForm extends React.Component {
     constructor(props) {
         super(props);
