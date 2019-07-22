@@ -72,13 +72,25 @@ export default class AddShip extends React.Component {
     }
 
     handleStringChange(e) {
+        let shipName = e.target.value;
+
+        if(shipName.startsWith('.')){
+            shipName = shipName.slice(1);
+        }
+        else if(shipName.startsWith('..')){
+            shipName = shipName.slice(2);
+        }
+        else if ((shipName.startsWith('__') && shipName.endsWith('__'))) {
+            shipName = shipName.slice(2, shipName.length - 3);            
+        }
+
         this.setState({
-            [e.target.name]: encodeURIComponent(e.target.value),
+            [e.target.name]: encodeURIComponent(shipName),
         });
     }
 
     render(){
-        return(
+        return (
             <Box m={4} px={2} py={4} borderRadius={16} border={1} borderColor='grey.500'>
                 <Grid container direction='row' justify='space-around' alignItems='center' spacing={3}>
                     <Grid item xs={12}>
@@ -86,7 +98,7 @@ export default class AddShip extends React.Component {
                     </Grid>
                     <Grid item xs={12}>
                         <TextField required fullWidth id='shipName' name='shipName' label='Nama Kapal' type='text' variant='outlined'
-                            helperText='Nama Kapal yang ingin ditambahkan'
+                            helperText='Max 20 char'
                             value={decodeURIComponent(this.state.shipName)}
                             onChange={this.handleStringChange}
                             style={{ width: '100%' }}
@@ -98,10 +110,10 @@ export default class AddShip extends React.Component {
                     <Grid item xs={12}>
                         <Button fullWidth variant='contained' color='primary' size='large' onClick={this.addShip} disabled={this.state.shipName === '' ? true : false}>
                             Tambahkan Kapal
-                        </Button>
+                            </Button>
                     </Grid>
                 </Grid>
             </Box>
-        );
+        );                 
     }
 };

@@ -38,6 +38,7 @@ export default class InputForm extends React.Component {
     }
 
     componentDidMount(){
+
         this.props.showProgressBar();
 
         const shipRef = firestore.collection('ship');
@@ -285,14 +286,14 @@ export default class InputForm extends React.Component {
                             }}
                         >
                             {
-                                this.state.shipList.length === 0 ? 
-                                <option value = ''> </option>
-                                :
-                                this.state.shipList.map((ship) => (
-                                    <option value={decodeURIComponent(ship)} key={ship}>
-                                        {decodeURIComponent(ship)}
-                                    </option>
-                                ))
+                                this.state.shipList.length === 0 ?
+                                    <option value=''> </option>
+                                    :
+                                    this.state.shipList.map((ship) => (
+                                        <option value={decodeURIComponent(ship)} key={ship}>
+                                            {decodeURIComponent(ship)}
+                                        </option>
+                                    ))
                             }
 
                         </TextField>
@@ -306,7 +307,7 @@ export default class InputForm extends React.Component {
                             style={{ width: '100%' }}
                         />
                     </Grid>
-                    
+
                     <Grid item xs={12} md={6}>
                         <TextField required fullWidth id='info' name='info' label='Keterangan' type='text' variant='outlined'
                             helperText='Masukkan keterangan bon (max 35 karakter)'
@@ -338,7 +339,7 @@ export default class InputForm extends React.Component {
                     <Grid item xs={12}>
                         <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleSubmit} disabled={this.notProperlyFilled() ? true : false}>
                             Tambahkan Bon
-                        </Button>
+                            </Button>
                     </Grid>
                 </Grid>
             </Box>

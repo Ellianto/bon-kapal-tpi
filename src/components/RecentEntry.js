@@ -92,7 +92,7 @@ export default class RecentEntry extends React.Component{
     }
 
     render(){
-        return(
+        return (
             <Box m={4} px={2} py={4} borderRadius={16} border={1} borderColor='grey.500' alignSelf='center'>
                 <Grid container justify='center' alignItems='center' spacing={3}>
                     <Grid item xs={12} md={2} />

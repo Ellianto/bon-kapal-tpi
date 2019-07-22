@@ -32,6 +32,7 @@ export default class MakeBook extends React.Component {
     }
 
     componentDidMount() {
+
         this.props.showProgressBar();
         const shipRef = firestore.collection('ship');
 
@@ -362,11 +363,11 @@ export default class MakeBook extends React.Component {
                         <Grid item xs={12} md={4}>
                             <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleDialogOpen} disabled={this.state.shipName === '' ? true : false}>
                                 Tampilkan Buku
-                            </Button>
+                                </Button>
                             <Dialog open={this.state.openDialog} onClose={this.handleDialogClose}>
                                 <DialogTitle>
                                     Pilih Buku untuk Dibuka
-                                </DialogTitle>
+                                    </DialogTitle>
                                 <DialogContent>
                                     <DialogContentText>
                                         Pilih buku yang ingin dibuka dari kapal {decodeURIComponent(this.state.shipName)}
@@ -401,7 +402,7 @@ export default class MakeBook extends React.Component {
                         <Grid item xs={12}>
                             <Button fullWidth variant='contained' color='primary' size='large' onClick={() => this.closeBook()} disabled={this.state.shipName === '' ? true : false}>
                                 Tutup Buku
-                            </Button>
+                                </Button>
                         </Grid>
                     </Grid>
                 </Box>
@@ -415,7 +416,7 @@ export default class MakeBook extends React.Component {
                                     <React.Fragment>
                                         <ReactToPrint
                                             content={() => this.componentRef}
-                                            trigger={() => <Button fullWidth color='primary' size='large' style={{marginBottom: 8}}> Cetak Buku </Button>}
+                                            trigger={() => <Button fullWidth color='primary' size='large' style={{ marginBottom: 8 }}> Cetak Buku </Button>}
                                         />
                                         <PrintableTable
                                             ref={el => (this.componentRef = el)}

@@ -1,21 +1,22 @@
 import React from 'react';
-import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
+import {BrowserRouter as Router, Route, Switch, Redirect} from 'react-router-dom';
 
 import AddShip from './AddShip'
+import MakeBook from './MakeBook'
 import HomePage from './HomePage'
 import InputForm from './InputForm'
-import MakeBook from './MakeBook'
+import LoginPage from './LoginPage'
+import Navbar from './CustomAppBar'
 import DataDisplay from './DataDisplay'
 import RecentEntry from './RecentEntry'
-import Navbar from './CustomAppBar'
 
 import {Snackbar, SnackbarContent, Button} from '@material-ui/core';
 import {History, Search, NoteAdd, PlaylistAdd, Home, Print } from '@material-ui/icons';
+import { fireAuth } from '../firebase';
 
-//TODO: Login Page
 //TODO: Implement better caching policy
 //TODO: Enable offline access
-//TODO: Make a 404 Page
+//TODO: Migrate to Cloud Functions
 
 export default class App extends React.Component{
     constructor(){
@@ -27,6 +28,7 @@ export default class App extends React.Component{
             isLoading : false,
             snackBarOpen : false,
             snackBarMessage : '',
+            user : null,
         }
 
         this.openSnackBar = (message, reload = false) => {
@@ -56,7 +58,7 @@ export default class App extends React.Component{
         this.navLinks = [
             {
                 id: 'home',
-                link: '/',
+                link: '/home',
                 icon: <Home />,
                 mainText: 'Home',
                 helpText: 'Halaman Utama',
@@ -107,6 +109,21 @@ export default class App extends React.Component{
         ];
     }
 
+    componentDidMount(){
+        fireAuth.onAuthStateChanged((user) => {
+            if(user){
+                this.setState({
+                    user : user,
+                    isLoading : false,
+                }); 
+            } else {
+                this.setState({
+                    user : null,
+                });
+            }
+        })
+    }
+
     handleSnackBarClose(event, reason) {
         if (reason === 'clickaway') {
             return;
@@ -121,7 +138,7 @@ export default class App extends React.Component{
     render(){
         return(
             <Router>
-                <Navbar isLoading={this.state.isLoading} navLinks={this.navLinks}/>
+                <Navbar openSnackBar={this.openSnackBar} isLoading={this.state.isLoading} navLinks={this.navLinks} user={this.state.user}/>
                 <Snackbar
                     autoHideDuration={2000}
                     key={this.state.snackBarMessage}
@@ -140,12 +157,20 @@ export default class App extends React.Component{
                     />
                 </Snackbar>
                 <Switch>
-                    <Route exact path='/'         render={props => <HomePage    {...props} navLinks={this.navLinks} />} />
-                    <Route exact path='/add_bon'  render={props => <InputForm   {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> } />
-                    <Route exact path='/show'     render={props => <DataDisplay {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> } />
-                    <Route exact path='/add_ship' render={props => <AddShip     {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> } />
-                    <Route exact path='/print'    render={props => <MakeBook  {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar}/> }/>
-                    <Route exact path='/recent'   render={props => <RecentEntry {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} /> } />
+                    {
+                        this.state.user ? 
+                        <React.Fragment>
+                            <Route exact path='/home'           render={props => <HomePage    {...props} navLinks={this.navLinks} />} />
+                            <Route exact path='/recent'     render={props => <RecentEntry {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} />} />
+                            <Route exact path='/add_bon'    render={props => <InputForm   {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
+                            <Route exact path='/show'       render={props => <DataDisplay {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
+                            <Route exact path='/add_ship'   render={props => <AddShip     {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
+                            <Route exact path='/print'      render={props => <MakeBook    {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
+                            <Route render={props => <Redirect {...props} to='/home' />} />
+                        </React.Fragment>
+                        : 
+                        <Route render={props => <LoginPage {...props} user={this.state.user} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
+                    }
                 </Switch>
             </Router>
         );

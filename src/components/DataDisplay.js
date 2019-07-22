@@ -100,6 +100,7 @@ export default class DataDisplay extends React.Component {
 	}
 
 	componentDidMount() {
+
 		this.props.showProgressBar();
 
 		const shipRef = firestore.collection('ship');
@@ -472,10 +473,10 @@ export default class DataDisplay extends React.Component {
 					open={this.state.modalOpen}
 					onClose={this.closeDialog}
 				>
-					<EditDialog 
+					<EditDialog
 						docInfo={this.state.docInfo}
 						docAmount={this.state.docAmount}
-						stringChange={this.handleStringChange} 
+						stringChange={this.handleStringChange}
 						intChange={this.handleIntChange}
 						editData={this.editData}
 						closeDialog={this.closeDialog}
@@ -548,7 +549,7 @@ export default class DataDisplay extends React.Component {
 						<Grid item xs={12}>
 							<Button fullWidth variant='contained' color='primary' size='large' onClick={this.fetchData} disabled={this.state.shipName === '' ? true : false}>
 								Cari Bon
-							</Button>
+								</Button>
 						</Grid>
 					</Grid>
 				</Box>
