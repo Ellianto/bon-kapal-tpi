@@ -17,7 +17,6 @@ import { fireAuth } from '../firebase';
 //TODO: Implement better caching policy
 //TODO: Enable offline access
 //TODO: Migrate to Cloud Functions
-
 export default class App extends React.Component{
     constructor(){
         super();
@@ -160,7 +159,7 @@ export default class App extends React.Component{
                     {
                         this.state.user ? 
                         <React.Fragment>
-                            <Route exact path='/home'           render={props => <HomePage    {...props} navLinks={this.navLinks} />} />
+                            <Route exact path='/home'       render={props => <HomePage    {...props} navLinks={this.navLinks} />} />
                             <Route exact path='/recent'     render={props => <RecentEntry {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} />} />
                             <Route exact path='/add_bon'    render={props => <InputForm   {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
                             <Route exact path='/show'       render={props => <DataDisplay {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />

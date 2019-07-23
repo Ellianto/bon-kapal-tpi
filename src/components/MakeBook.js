@@ -363,7 +363,7 @@ export default class MakeBook extends React.Component {
                         <Grid item xs={12} md={4}>
                             <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleDialogOpen} disabled={this.state.shipName === '' ? true : false}>
                                 Tampilkan Buku
-                                </Button>
+                            </Button>
                             <Dialog open={this.state.openDialog} onClose={this.handleDialogClose}>
                                 <DialogTitle>
                                     Pilih Buku untuk Dibuka
