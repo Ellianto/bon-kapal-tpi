@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactToPrint from 'react-to-print';
 
-import firebase, {firestore} from '../firebase'
+import {getShipsMethod, getBooksMethod, addBookMethod, openBookMethod} from '../firebase'
 import PrintableTable from './PrintableTable'
 
 import { Box, Grid, TextField, Button, Typography, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions} from '@material-ui/core';
@@ -18,6 +18,8 @@ export default class MakeBook extends React.Component {
         this.handleDialogOpen = this.handleDialogOpen.bind(this);
         this.handleDialogClose = this.handleDialogClose.bind(this);
 
+        this.handleFirebaseErrors = this.handleFirebaseErrors.bind(this);
+
         this.state = {
             bookList: [],
             bookId : '',
@@ -31,25 +33,30 @@ export default class MakeBook extends React.Component {
         }
     }
 
+    handleFirebaseErrors(err){
+        console.error(err.code);
+        this.props.openSnackBar(err.message);
+    }
+
     componentDidMount() {
-
         this.props.showProgressBar();
-        const shipRef = firestore.collection('ship');
 
-        shipRef.get().then((querySnapshot) => {
+        getShipsMethod({}).then(result => {
             let shipList = [];
+            let shipName = '';
 
-            if (!querySnapshot.empty) {
-                querySnapshot.forEach((doc) => shipList.push(doc.id));
+            if (!result.data.isEmpty) {
+                shipName = result.data.shipList[0];
+                shipList = result.data.shipList;
             }
 
             this.setState({
                 shipList: shipList,
-                shipName: shipList.length === 0 ? '' : shipList[0],
+                shipName: shipName,
             });
 
             this.props.closeProgressBar();
-        });
+        }).catch(this.handleFirebaseErrors);
     }
 
     printDate(dateString) {
@@ -79,6 +86,8 @@ export default class MakeBook extends React.Component {
     }
 
     openBook(){
+        this.props.showProgressBar();
+
         const bookArr = this.state.bookList;
         const chosenId = this.state.bookId;
 
@@ -87,71 +96,15 @@ export default class MakeBook extends React.Component {
         });
 
         const shipName = this.state.shipName;
-        const shipRef = firestore.collection('ship').doc(shipName);
 
-        let bonRef;
+        const params = {
+            shipName : shipName,
+            chosenBook : chosenBook,
+        };
 
-        if (chosenBook.startDate === '') {
-            bonRef = shipRef.collection('bon')
-                .where(firebase.firestore.FieldPath.documentId(), '<=', chosenBook.endDate);
-        } else {
-            bonRef = shipRef.collection('bon')
-                .where(firebase.firestore.FieldPath.documentId(), '>', chosenBook.startDate)
-                .where(firebase.firestore.FieldPath.documentId(), '<=', chosenBook.endDate);
-        }
-
-        bonRef.get().then(async(querySnapshot) => {
-            const iQuery = bonRef.firestore.collectionGroup('i');
-            const oQuery = bonRef.firestore.collectionGroup('o');
-           
-            const [iDocs, oDocs] = await Promise.all([
-                iQuery.get(),
-                oQuery.get(),
-            ]);
-
-            const dateArr = querySnapshot.docs;
-            const iArr = iDocs.docs;
-            const oArr = oDocs.docs;
-
-            let tempMap = new Map();
-
-            for (const dateDoc of dateArr) {
-                let dateList = [];
-                const dateKey = dateDoc.id;
-
-                for (const iData of iArr) {
-                    if (iData.ref.parent.parent.id === dateKey) {
-                        const data = iData.data();
-                        const docId = iData.id;
-
-                        dateList.push({
-                            docId: docId,
-                            type: 'i',
-                            info: data.info,
-                            amount: data.amount,
-                        });
-                    }
-                }
-
-                for (const oData of oArr) {
-                    if (oData.ref.parent.parent.id === dateKey) {
-                        const data = oData.data();
-                        const docId = oData.id;
-
-                        dateList.push({
-                            docId: docId,
-                            type: 'o',
-                            info: data.info,
-                            amount: data.amount,
-                        });
-                    }
-                }
-
-                tempMap.set(dateKey, dateList);
-            };
-
+        openBookMethod(params).then(result => {
             this.setState({
-                aggrData: Array.from(tempMap),
+                aggrData: result.data.resultData,
                 greenSum: chosenBook.isum,
                 redSum: chosenBook.osum,
                 shownShip: shipName,
@@ -159,11 +112,8 @@ export default class MakeBook extends React.Component {
                 openDialog: false,
             });
 
-            this.props.openSnackBar('Menampilkan buku...');
-        }).catch((err) => {
-            console.error(err.message);
-            this.props.openSnackBar('Terjadi kesalahan ketika menampilkan buku! Coba lagi dalam beberapa saat!');
-        })
+            this.props.closeProgressBar();
+        }).catch(this.handleFirebaseErrors);
     }
 
     closeBook() {
@@ -171,120 +121,30 @@ export default class MakeBook extends React.Component {
 
         const shipName = this.state.shipName;
 
-        const shipRef = firestore.collection('ship').doc(shipName);
-        const bookRef = shipRef.collection('book');
+        const params = {
+            shipName : shipName,
+        };
 
-        firestore.runTransaction(async (transaction) => {
-            const shipDoc = await transaction.get(shipRef);
+        addBookMethod(params).then(result => {
+            let newState = {submitted : true};
+            let newMessage = 'Tidak ada bon yang bisa di rekap!';
 
-            const shipData = shipDoc.data();
-
-            const startDate = shipData.lastBook;
-            const endDate = this.formatDate();
-
-            let bonRef;
-
-            if (startDate === '') {
-                bonRef = shipRef.collection('bon')
-                    .where(firebase.firestore.FieldPath.documentId(), '<=', endDate);
-            } else {
-                bonRef = shipRef.collection('bon')
-                    .where(firebase.firestore.FieldPath.documentId(), '>', startDate)
-                    .where(firebase.firestore.FieldPath.documentId(), '<=', endDate);
-            }
-
-            const bonQuery = await bonRef.get();
-
-            if (bonQuery.empty) {
-                transaction.set(shipRef, shipData);
-                return [[], [], [], 0, 0, startDate];
-            }
-
-            const iQuery = bonRef.firestore.collectionGroup('i');
-            const oQuery = bonRef.firestore.collectionGroup('o');
-
-            const [iDocs, oDocs] = await Promise.all([
-                iQuery.get(),
-                oQuery.get(),
-            ]);
-
-            transaction.set(bookRef.doc(endDate), {
-                startDate: startDate,
-                endDate: endDate,
-                isum: shipData.isum,
-                osum: shipData.osum,
-
-            }, { merge: true });
-
-            transaction.set(shipRef, {
-                isum: 0,
-                osum: 0,
-                lastUp: (new Date()).valueOf(),
-                lastBook: endDate,
-            }, { merge: true });
-
-            return [bonQuery.docs, iDocs.docs, oDocs.docs, shipData.isum, shipData.osum];
-
-        }).then(([dateArr, iArr, oArr, greenSum, redSum]) => {
-            if (dateArr.length === 0) {
-                this.setState({
-                    submitted: true,
-                });
-
-                this.props.openSnackBar('Tidak ada bon yang bisa di rekap!');
-            } else {
-                let tempMap = new Map();
-
-                for (const dateDoc of dateArr) {
-                    let dateList = [];
-                    const dateKey = dateDoc.id;
-
-                    for (const iData of iArr) {
-                        if (iData.ref.parent.parent.id === dateKey) {
-                            const data = iData.data();
-                            const docId = iData.id;
-
-                            dateList.push({
-                                docId: docId,
-                                type: 'i',
-                                info: data.info,
-                                amount: data.amount,
-                            });
-                        }
-                    }
-
-                    for (const oData of oArr) {
-                        if (oData.ref.parent.parent.id === dateKey) {
-                            const data = oData.data();
-                            const docId = oData.id;
-
-                            dateList.push({
-                                docId: docId,
-                                type: 'o',
-                                info: data.info,
-                                amount: data.amount,
-                            });
-                        }
-                    }
-
-                    tempMap.set(dateKey, dateList);
+            if(!result.data.isEmpty){
+                newState = {
+                    submitted : true,
+                    aggrData : result.data.resultData,
+                    greenSum : result.data.incomeSum,
+                    redSum : result.data.expenseSum,
+                    shownShip : shipName,
+                    openDialog : false,
                 };
 
-                this.setState({
-                    aggrData: Array.from(tempMap),
-                    greenSum: greenSum,
-                    redSum: redSum,
-                    shownShip: shipName,
-                    submitted: true,
-                    openDialog: false,
-                });
-
-                this.props.openSnackBar('Tutup Buku Berhasil! Membuka buku baru...');
+                newMessage = 'Tutup Buku Berhasil! Membuka buku baru...';
             }
-        }).catch((err) => {
-            console.error(err.message);
-            this.props.openSnackBar('Gagal Tutup Buku! Coba lagi dalam beberapa saat!');
-        });
+
+            this.setState(newState);
+            this.props.openSnackBar(newMessage);
+        }).catch(this.handleFirebaseErrors);
     }
 
     handleStringChange(e) {
@@ -295,34 +155,23 @@ export default class MakeBook extends React.Component {
     }
 
     handleDialogOpen(e){
-        const shipName = this.state.shipName;
+        this.props.showProgressBar();
 
-        const booksRef = firestore.collection('ship').doc(shipName).collection('book');
+        const params = {
+            shipName :  this.state.shipName,
+        }
 
-        booksRef.get().then((querySnapshot) => {
-            if(!querySnapshot.empty){
-                const bookArr = [];
-
-                querySnapshot.forEach((book) => {
-                    const data = book.data();
-                    
-                    bookArr.push({
-                        startDate : data.startDate,
-                        endDate : data.endDate,
-                        isum : data.isum,
-                        osum : data.osum,
-                    })
-                });
-
+        getBooksMethod(params).then(result => {
+            if(result.data.books.length > 0){
                 this.setState({
-                    bookList : bookArr,
-                    bookId : bookArr[0].endDate,
+                    bookList: result.data.books,
+                    bookId: result.data.books[0].endDate,
                     openDialog: true,
                 });
             }
-        }).catch((err) => {
-            this.props.openSnackBar('Terjadi kesalahan ketika mengambil daftar buku! Silahkan coba lagi!');
-        });
+
+            this.props.closeProgressBar();
+        }).catch(this.handleFirebaseErrors);
     }
 
     handleDialogClose(e){
@@ -361,13 +210,13 @@ export default class MakeBook extends React.Component {
                             </TextField>
                         </Grid>
                         <Grid item xs={12} md={4}>
-                            <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleDialogOpen} disabled={this.state.shipName === '' ? true : false}>
-                                Tampilkan Buku
+                            <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleDialogOpen} disabled={this.state.shipName === '' ? true : false} style={{height : 56}}>
+                                Tampilkan Buku-Buku
                             </Button>
                             <Dialog open={this.state.openDialog} onClose={this.handleDialogClose}>
                                 <DialogTitle>
                                     Pilih Buku untuk Dibuka
-                                    </DialogTitle>
+                                </DialogTitle>
                                 <DialogContent>
                                     <DialogContentText>
                                         Pilih buku yang ingin dibuka dari kapal {decodeURIComponent(this.state.shipName)}
@@ -400,9 +249,9 @@ export default class MakeBook extends React.Component {
                             </Dialog>
                         </Grid>
                         <Grid item xs={12}>
-                            <Button fullWidth variant='contained' color='primary' size='large' onClick={() => this.closeBook()} disabled={this.state.shipName === '' ? true : false}>
+                            <Button fullWidth variant='contained' color='primary' size='large' onClick={() => this.closeBook()} disabled={this.state.shipName === '' ? true : false} style={{ height: 56 }}>
                                 Tutup Buku
-                                </Button>
+                            </Button>
                         </Grid>
                     </Grid>
                 </Box>
@@ -416,7 +265,7 @@ export default class MakeBook extends React.Component {
                                     <React.Fragment>
                                         <ReactToPrint
                                             content={() => this.componentRef}
-                                            trigger={() => <Button fullWidth color='primary' size='large' style={{ marginBottom: 8 }}> Cetak Buku </Button>}
+                                            trigger={() => <Button fullWidth variant='contained' color='primary' size='large' style={{ marginBottom: 8 , height: 56}}> Cetak Buku </Button>}
                                         />
                                         <PrintableTable
                                             ref={el => (this.componentRef = el)}

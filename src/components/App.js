@@ -1,22 +1,19 @@
 import React from 'react';
 import {BrowserRouter as Router, Route, Switch, Redirect} from 'react-router-dom';
 
-import AddShip from './AddShip'
-import MakeBook from './MakeBook'
-import HomePage from './HomePage'
-import InputForm from './InputForm'
-import LoginPage from './LoginPage'
-import Navbar from './CustomAppBar'
-import DataDisplay from './DataDisplay'
-import RecentEntry from './RecentEntry'
+import AddShip from './AddShip' ;
+import MakeBook from './MakeBook' ;
+import HomePage from './HomePage' ;
+import InputForm from './InputForm' ;
+import LoginPage from './LoginPage' ;
+import DataDisplay from './DataDisplay' ;
+import RecentEntry from './RecentEntry' ;
+import Navbar from './CustomAppBar';
 
-import {Snackbar, SnackbarContent, Button} from '@material-ui/core';
+import {Snackbar, SnackbarContent, Button, Box} from '@material-ui/core';
 import {History, Search, NoteAdd, PlaylistAdd, Home, Print } from '@material-ui/icons';
 import { fireAuth } from '../firebase';
 
-//TODO: Implement better caching policy
-//TODO: Enable offline access
-//TODO: Migrate to Cloud Functions
 export default class App extends React.Component{
     constructor(){
         super();
@@ -155,12 +152,13 @@ export default class App extends React.Component{
                         action={[<Button key='close' size='small' color='secondary' onClick={this.handleSnackBarClose}> TUTUP </Button>]}
                     />
                 </Snackbar>
+                <Box marginTop={12}/>
                 <Switch>
                     {
                         this.state.user ? 
                         <React.Fragment>
                             <Route exact path='/home'       render={props => <HomePage    {...props} navLinks={this.navLinks} />} />
-                            <Route exact path='/recent'     render={props => <RecentEntry {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} />} />
+                            <Route exact path='/recent'     render={props => <RecentEntry {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
                             <Route exact path='/add_bon'    render={props => <InputForm   {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
                             <Route exact path='/show'       render={props => <DataDisplay {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
                             <Route exact path='/add_ship'   render={props => <AddShip     {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />

@@ -22,10 +22,10 @@ class CustomExpansionPanel extends React.Component {
                     <List dense style={{ width: '100%'}}>
                         {
                             itemArr.map((doc) => {
-                                const data = doc.data();
+                                const data = doc[1];
 
                                 return (
-                                    <ListItem disableGutters style={{paddingLeft:16}} key={doc.id}>
+                                    <ListItem disableGutters style={{paddingLeft:16}} key={doc[0]}>
                                         <ListItemText primary={decodeURIComponent(data.info)} secondary={this.props.formatCurrency(data.amount)}/>
                                         <ListItemSecondaryAction style={{ right: 4 }}>
                                             <IconButton size='small' onClick={() => {
@@ -34,7 +34,7 @@ class CustomExpansionPanel extends React.Component {
                                                 <Edit />
                                             </IconButton>
                                             <IconButton size='small' onClick={() => {
-                                                return this.props.deleteData(doc.id, itemKey, type);
+                                                return this.props.deleteData(doc[0], itemKey, type);
                                             }}>
                                                 <DeleteForever />
                                             </IconButton>

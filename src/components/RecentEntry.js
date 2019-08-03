@@ -1,11 +1,10 @@
 import React from 'react';
 
-import {firestore} from '../firebase';
+import {getRecentMethod} from '../firebase';
 
 import {Divider, List, ListItem, ListItemText, Grid, Typography, Box} from '@material-ui/core';
 import {red, green} from '@material-ui/core/colors';
 
-//Reimplement this with List
 export default class RecentEntry extends React.Component{
     constructor(props){
         super(props);
@@ -13,23 +12,30 @@ export default class RecentEntry extends React.Component{
         this.renderListEntry = this.renderListEntry.bind(this);
         this.formatCurrency = this.formatCurrency.bind(this);
 
+        this.handleFirebaseErrors = this.handleFirebaseErrors.bind(this);
+
         this.state = {
             recentEntries : [],
         };
     }
 
+    handleFirebaseErrors(err) {
+        console.error(err.code);
+        this.props.openSnackBar(err.message);
+    }
+
     componentDidMount(){
         this.props.showProgressBar();
 
-        firestore.collection('recent').doc('entry').onSnapshot((docSnapshot) => {
-            if(docSnapshot.exists){
+        getRecentMethod({}).then(result => {
+            if(result.data.resultArray.length > 0){
                 this.setState({
-                    recentEntries: docSnapshot.data().entries,
+                    recentEntries : result.data.resultArray,
                 });
             }
 
             this.props.closeProgressBar();
-        });
+        }).catch(this.handleFirebaseErrors);
     }
 
     formatCurrency(inputNumber) {

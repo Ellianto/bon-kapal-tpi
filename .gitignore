@@ -10,6 +10,7 @@
 
 # production
 /build
+/.firebase
 
 # misc
 .DS_Store
@@ -21,3 +22,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+bon-kapal-tpi-firebase-adminsdk-zot3r-8a65fbd9b8.json
+firebase-debug.log
+.firebase/hosting.YnVpbGQ.cache

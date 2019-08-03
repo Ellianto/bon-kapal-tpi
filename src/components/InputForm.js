@@ -1,6 +1,6 @@
 import React from 'react'
 
-import {firestore} from '../firebase';
+import {getShipsMethod, addBonMethod} from '../firebase';
 
 import {TextField, InputAdornment, Button, Grid, Typography, Box} from '@material-ui/core';
 
@@ -15,6 +15,8 @@ export default class InputForm extends React.Component {
         this.handleStringChange = this.handleStringChange.bind(this);
         this.handleIntChange = this.handleIntChange.bind(this);
         this.notProperlyFilled = this.notProperlyFilled.bind(this);
+
+        this.handleFirebaseErrors = this.handleFirebaseErrors.bind(this);
 
         this.transactionChoices = [
             {
@@ -37,26 +39,30 @@ export default class InputForm extends React.Component {
         };
     }
 
-    componentDidMount(){
+    handleFirebaseErrors(err){
+        console.error(err.code);
+        this.props.openSnackBar(err.message);
+    }
 
+    componentDidMount(){
         this.props.showProgressBar();
 
-        const shipRef = firestore.collection('ship');
-        
-        shipRef.get().then((querySnapshot) => {
+        getShipsMethod({}).then(result => {
             let shipList = [];
+            let shipName = '';
 
-            if (!querySnapshot.empty) {
-                querySnapshot.forEach((doc) => shipList.push(doc.id));
+            if (!result.data.isEmpty) {
+                shipName = result.data.shipList[0];
+                shipList = result.data.shipList;
             }
 
             this.setState({
-                shipList : shipList,
-                ship : shipList[0],
+                shipList: shipList,
+                ship: shipName,
             });
 
             this.props.closeProgressBar();
-        });
+        }).catch(this.handleFirebaseErrors);
     }
 
     formatDate(){
@@ -126,104 +132,27 @@ export default class InputForm extends React.Component {
             return;
         }
 
-        const shipName = this.state.ship;
+        const params = {
+            shipName: this.state.ship,
+            year : inputDate.substring(0, 4),
+            month : inputDate.substring(4, 6),
+            fullDate : inputDate,
+            isIncome: this.state.transaction === 'pemasukan',
+            amount: parseInt(this.state.amount, 10),
+            info : this.state.info,
+        }
 
-        const thisAmount = parseInt(this.state.amount, 10);
-
-        const newEntry = {
-            amount: thisAmount,
-            info: this.state.info,
-            lastUp : timeNow,
-        };
-
-        const thisTrans = this.state.transaction;
-        const isIncome = thisTrans === 'pemasukan';
-        const endPath = isIncome ? 'i' : 'o';
-
-        const recentRef = firestore.collection('recent').doc('entry');
-        const shipRef = firestore.collection('ship').doc(shipName);
-        const aggregationRef = shipRef.collection('aggr').doc(inputDate.substring(0, 4));
-        const dateRef = shipRef.collection('bon').doc(inputDate);
-        const newRef = dateRef.collection(endPath).doc();
-
-        firestore.runTransaction(async (transaction) => {
-            const [recentDoc, shipDoc, aggregationDoc, dateDoc] = await Promise.all([
-                transaction.get(recentRef),
-                transaction.get(shipRef),
-                transaction.get(aggregationRef),
-                transaction.get(dateRef),
-            ]);
-
-            let aggregationValue;
-
-            if(aggregationDoc.exists){
-                aggregationValue = aggregationDoc.data();
-            } else {
-                let newArr = [];
-
-                for(let i = 0; i < 13; i++){
-                    newArr.push({
-                        isum : 0,
-                        osum : 0,
-                    });
-                }
-
-                aggregationValue = {
-                    isum : 0,
-                    osum : 0,
-                    lastUp : 0,
-                    months : newArr,
-                };
+        addBonMethod(params).then(result => {
+            if (result.data.transactionSuccess) {
+                this.props.openSnackBar(result.data.message);
+                this.setState({
+                    transaction: 'pengeluaran',
+                    date: this.formatDate(),
+                    info: '',
+                    amount: '0',
+                });
             }
-
-            let shipValue = shipDoc.data();
-            let dateValue = dateDoc.exists ? dateDoc.data() : { isum: 0, osum: 0, lastUp: 0 };
-            let recentArr = recentDoc.exists ? recentDoc.data().entries : [];
-
-            const newLength = recentArr.unshift({ ship : shipName, ref: inputDate + endPath, ...newEntry});
-
-            if (newLength > 10) {
-                recentArr.pop();
-            }
-
-            const thisMonth = parseInt(inputDate.substring(4, 6), 10);
-
-            if(isIncome){
-                shipValue.isum += thisAmount;
-                dateValue.isum += thisAmount;
-                aggregationValue.isum += thisAmount;
-                aggregationValue.months[thisMonth].isum += thisAmount;
-            } else {
-                shipValue.osum += thisAmount;
-                dateValue.osum += thisAmount;
-                aggregationValue.osum += thisAmount;
-                aggregationValue.months[thisMonth].osum += thisAmount;
-            }
-
-            shipValue.lastUp = timeNow;
-            dateValue.lastUp = timeNow;
-            aggregationValue.lastUp = timeNow;
-
-            transaction.set(shipRef, shipValue, {merge : true});
-            transaction.set(aggregationRef, aggregationValue, {merge : true});
-            transaction.set(recentRef, {entries : recentArr}, {merge : true});
-            transaction.set(dateRef, dateValue, {merge: true});
-            transaction.set(newRef, newEntry, {merge: true});
-
-            return Promise.resolve(true);
-        }).then(() => {
-            this.setState({
-                transaction: 'pengeluaran',
-                date : this.formatDate(),
-                info: '',
-                amount: '0',
-            });
-
-            this.props.openSnackBar('Bon berhasil ditambahkan!');
-        }).catch((err) => {
-            console.error(err.message);
-            this.props.openSnackBar('Terjadi kesalahan ketika menyimpan bon! Coba lagi dalam beberapa saat');
-        });
+        }).catch(this.handleFirebaseErrors);
     }
 
     handleDateChange(e) {
@@ -339,7 +268,7 @@ export default class InputForm extends React.Component {
                     <Grid item xs={12}>
                         <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleSubmit} disabled={this.notProperlyFilled() ? true : false}>
                             Tambahkan Bon
-                            </Button>
+                        </Button>
                     </Grid>
                 </Grid>
             </Box>

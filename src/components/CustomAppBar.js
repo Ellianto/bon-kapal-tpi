@@ -1,4 +1,5 @@
 import React from 'react'
+import {Link} from 'react-router-dom'
 
 import {Fade, LinearProgress, Drawer, Divider, ListItemIcon, ListItem, List, ListItemText, AppBar, Toolbar, IconButton, Typography} from '@material-ui/core';
 import {Menu, MobileOff} from '@material-ui/icons';
@@ -24,7 +25,7 @@ export default class Navbar extends React.Component {
     render() {
         return (
             <div style={{flexGrow : 1}}>
-                <AppBar position='static'>
+                <AppBar>
                     <Toolbar>
                         {
                             this.props.user ? 
@@ -61,7 +62,7 @@ export default class Navbar extends React.Component {
                                         );
                                     } else {
                                         return (
-                                            <ListItem button component='a' href={listItem.link} key={listItem.id}>
+                                            <ListItem button component={Link} to={listItem.link} key={listItem.id}>
                                                 <ListItemIcon> {listItem.icon} </ListItemIcon>
                                                 <ListItemText primary={listItem.mainText} secondary={listItem.helpText} />
                                             </ListItem>

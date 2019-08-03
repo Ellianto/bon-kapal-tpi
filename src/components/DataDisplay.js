@@ -1,6 +1,6 @@
 import React from 'react'
 
-import firebase, {firestore} from '../firebase'
+import {getShipsMethod, deleteBonMethod, getBonsMethod, editBonMethod} from '../firebase'
 import BillCard from './BillCard'
 import EditDialog from './EditDialog';
 
@@ -18,6 +18,8 @@ export default class DataDisplay extends React.Component {
 		this.reloadList = this.reloadList.bind(this);
 		this.handleIntChange = this.handleIntChange.bind(this);
 		this.handleStringChange = this.handleStringChange.bind(this);
+
+		this.handleFirebaseErrors = this.handleFirebaseErrors.bind(this);
 
 		const now = new Date();
 		const yearNow = now.getFullYear();
@@ -99,34 +101,38 @@ export default class DataDisplay extends React.Component {
 		};
 	}
 
-	componentDidMount() {
+	handleFirebaseErrors(err) {
+		console.error(err.code);
+		this.props.openSnackBar(err.message);
+	}
 
+	componentDidMount() {
 		this.props.showProgressBar();
 
-		const shipRef = firestore.collection('ship');
-
-		shipRef.get().then((querySnapshot) => {
+		getShipsMethod({}).then(result => {
 			let shipList = [];
+			let shipName = '';
 
-			if (!querySnapshot.empty) {
-				querySnapshot.forEach((doc) => shipList.push(doc.id));
+			if (!result.data.isEmpty) {
+				shipName = result.data.shipList[0];
+				shipList = result.data.shipList;
 			}
 
 			this.setState({
 				shipList: shipList,
-				shipName: shipList.length === 0 ? '' : shipList[0],
+				shipName: shipName,
 			});
 
 			this.props.closeProgressBar();
-		});
+		}).catch(this.handleFirebaseErrors);
 	}
 
 	displayDialog(doc, date, type) {
-		const data = doc.data();
+		const data = doc[1];
 
 		this.setState({
 			type: type,
-			docId: doc.id,
+			docId: doc[0],
 			docInfo: data.info,
 			docDate: date,
 			docAmount: data.amount.toString(),
@@ -161,50 +167,21 @@ export default class DataDisplay extends React.Component {
 			theMonth = theMonth.substring(1);
 		}
 
-		const startDate = theYear + theMonth + '01';
-		const endDate = theYear + theMonth + '31';
+		const params = {
+			shipName : shipName,
+			startDate: theYear + theMonth + '01',
+			endDate: theYear + theMonth + '31',
+		};
 
-		let docMap = new Map();
-
-		const populateMap = async (doc) => {
-			const [iCollection, oCollection] = await Promise.all([
-				doc.ref.collection('i').get(),
-				doc.ref.collection('o').get(),
-			]);
-			
-			docMap.set(doc.id, {
-				...doc.data(),
-				i: iCollection.size === 0 ? [] : iCollection.docs,
-				o: oCollection.size === 0 ? [] : oCollection.docs,
+		getBonsMethod(params).then(result => {
+			this.setState({
+				items : result.data.bons,
+				shownShip : shipName,
+				submitted : true,
 			});
 
-			return Promise.resolve(true);
-		};
- 
-
-		const multiRef = firestore.collection('ship').doc(shipName).collection('bon')
-						.where(firebase.firestore.FieldPath.documentId(), '>=', startDate)
-						.where(firebase.firestore.FieldPath.documentId(), '<=', endDate);
-
-		multiRef.get().then((querySnapshot) => {
-			const promiseArr = querySnapshot.docs.map(populateMap);
-			return Promise.all(promiseArr);
-		}).then((boolArr) => {
-			if (!boolArr.includes(false)) {
-				this.setState({
-					items : Array.from(docMap),
-					shownShip : shipName,
-					submitted : true,
-				});
-				this.props.closeProgressBar();
-			} else {
-				throw new Error('Terjadi kesalahan! Coba lagi dalam beberapa saat!');
-			}
-
-		}).catch((err) => {
-			console.error(err.message);
-			this.props.openSnackBar('Terjadi kesalahan! Coba lagi dalam beberapa saat!');
-		});
+			this.props.closeProgressBar();
+		}).catch(this.handleFirebaseErrors);
 	}
 
 	editData() {
@@ -233,114 +210,17 @@ export default class DataDisplay extends React.Component {
 			return;
 		}
 
-		let amountDiff = 0;
-		let add = false;
+		const params = {
+			shipName: this.state.shownShip,
+			documentDate: this.state.docDate.substring(0, 8),
+			transactionType: this.state.type,
+			documentId : this.state.docId,
+			isAdd: oldAmount < newAmount,
+			newInfo : newInfo,
+			newAmount : newAmount,
+		};
 
-		if (oldAmount > newAmount) {
-			amountDiff = oldAmount - newAmount;
-		} else {
-			amountDiff = newAmount - oldAmount;
-			add = true;
-		}
-
-		const shipName = this.state.shownShip;
-
-		const docDate = this.state.docDate;
-		const dateType = docDate + this.state.type;
-		const type = this.state.type;
-
-		const now = (new Date()).valueOf();
-		const docYear = docDate.substring(0, 4);
-		const docMonth = parseInt(docDate.substring(4, 6), 10);
-		const docFullDate = docDate.substring(0, 8);
-
-		const shipRef = firestore.collection('ship').doc(shipName);
-		const aggregationRef = shipRef.collection('aggr').doc(docYear);
-		const dateRef = shipRef.collection('bon').doc(docFullDate);
-		const docRef = dateRef.collection(type).doc(this.state.docId);
-		const recentRef = firestore.collection('recent').doc('entry');
-
-		firestore.runTransaction(async (transaction) => {
-			const [shipDoc, aggregationDoc, dateDoc, editDoc, recentDoc] = await Promise.all([
-				transaction.get(shipRef),
-				transaction.get(aggregationRef),
-				transaction.get(dateRef),
-				transaction.get(docRef),
-				transaction.get(recentRef),
-			]);
-
-			let shipValue = shipDoc.data();
-			let aggregationValue = aggregationDoc.data();
-			let recentArr = recentDoc.data().entries;
-			let dateValue = dateDoc.data();
-			let docValue = editDoc.data();
-
-			if (!aggregationDoc.exists || !recentDoc.exists || !dateDoc.exists || !editDoc.exists || !shipDoc.exists) {
-				throw new Error('Document not found');
-			}
-
-			docValue.info = newInfo;
-
-			if (add) {
-				docValue.amount += amountDiff;
-
-				if (type === 'i') {
-					shipValue.isum += amountDiff;
-					aggregationValue.isum += amountDiff;
-					aggregationValue.months[docMonth].isum += amountDiff;
-					dateValue.isum += amountDiff;
-				} else if (type === 'o') {
-					shipValue.osum += amountDiff;
-					aggregationValue.osum += amountDiff;
-					aggregationValue.months[docMonth].osum += amountDiff;
-					dateValue.osum += amountDiff;
-				}
-			} else {
-				docValue.amount -= amountDiff;
-
-				if (type === 'i') {
-					shipValue.isum -= amountDiff;
-					aggregationValue.isum -= amountDiff;
-					aggregationValue.months[docMonth].isum -= amountDiff;
-					dateValue.isum -= amountDiff;
-				} else if (type === 'o') {
-					shipValue.osum -= amountDiff;
-					aggregationValue.osum -= amountDiff;
-					aggregationValue.months[docMonth].osum -= amountDiff;
-					dateValue.osum -= amountDiff;
-				}
-			}
-
-			shipValue.lastUp = now;
-			aggregationValue.lastUp = now;
-			dateValue.lastUp = now;
-			docValue.lastUp = now;
-
-			function findEntry(entry) {
-				return entry.ref === dateType && entry.ship === shipName;
-			}
-
-			const entryIndex = recentArr.findIndex(findEntry);
-
-			if (entryIndex >= 0) {
-				recentArr[entryIndex] = {
-					amount: newAmount,
-					info: newInfo,
-					lastUp: now,
-					ref: recentArr[entryIndex].ref,
-					ship : this.state.shownShip,
-				};
-			}
-
-			transaction.set(recentRef, { entries: recentArr }, { merge: true });
-			transaction.set(shipRef, shipValue, {merge : true});
-			transaction.set(aggregationRef, aggregationValue, { merge: true });
-			transaction.set(dateRef, dateValue, { merge: true });
-			transaction.set(docRef, docValue, { merge: true });
-
-			return Promise.resolve(true);
-		}).then(() => {
-			console.log('Edit success!');
+		editBonMethod(params).then(result => {
 			this.setState({
 				modalOpen: false,
 				type: '',
@@ -352,95 +232,25 @@ export default class DataDisplay extends React.Component {
 				docOldAmount: '0',
 			});
 
-			this.props.openSnackBar('Data berhasil diubah!');
+			this.props.openSnackBar(result.data.responseText);
 			this.reloadList();
-		}).catch((err) => {
-			console.error(err.message);
-			this.props.openSnackBar('Terjadi kesalahan! Coba lagi dalam beberapa saat');
-		});
+		}).catch(this.handleFirebaseErrors);
 	}
 
 	deleteData(docId, date, type) {
 		this.props.showProgressBar();
 
-		const documentFullDate = date.substring(0, 8);
-		const documentYear = documentFullDate.substring(0, 4);
-		const documentMonth = documentFullDate.substring(4, 6);
+		const params = {
+			documentId : docId,
+			transactionType : type,
+			documentDate: date.substring(0, 8),
+			shipName : this.state.shownShip,
+		};
 
-		const documentString = documentFullDate + type;
-
-		const lastUp = (new Date()).valueOf();
-
-		const recentRef = firestore.collection('recent').doc('entry');
-		const shipRef = firestore.collection('ship').doc(this.state.shownShip);
-		const aggregationRef = shipRef.collection('aggr').doc(documentYear);
-		const dateRef = shipRef.collection('bon').doc(documentFullDate);
-		const docRef = dateRef.collection(type).doc(docId);
-
-		firestore.runTransaction(async (transaction) => {
-			const [recentDoc, shipDoc, aggregationDoc, dateDoc, chosenDoc] = await Promise.all([
-				transaction.get(recentRef),
-				transaction.get(shipRef),
-				transaction.get(aggregationRef),
-				transaction.get(dateRef),
-				transaction.get(docRef),
-			]);
-
-			if (!recentDoc.exists || !aggregationDoc.exists || !chosenDoc.exists || !shipDoc.exists) {
-				throw new Error('Invalid Document');
-			}
-
-			let recentArr = recentDoc.data().entries;
-			let shipValue = shipDoc.data();
-			let aggregationValue = aggregationDoc.data();
-			let dateValue = dateDoc.data();
-			let docValue = chosenDoc.data();
-
-			if (type === 'i') {
-				shipValue.isum -= docValue.amount;
-				aggregationValue.isum -= docValue.amount;
-				aggregationValue.months[parseInt(documentMonth, 10)].isum -= docValue.amount;
-				dateValue.isum -= docValue.amount;
-			} else {
-				shipValue.osum -= docValue.amount;
-				aggregationValue.osum -= docValue.amount;
-				aggregationValue.months[parseInt(documentMonth, 10)].osum -= docValue.amount;
-				dateValue.osum -= docValue.amount;
-			}
-
-			aggregationValue.lastUp = lastUp;
-			dateValue.lastUp = lastUp;
-			shipValue.lastUp = lastUp;
-
-			function findDocument(entry) {
-				return entry.ref === documentString;
-			}
-
-			const entryIndex = recentArr.findIndex(findDocument);
-
-			if (entryIndex >= 0) {
-				recentArr.splice(entryIndex, 1);
-			}
-
-			transaction.update(shipRef, shipValue);
-			transaction.update(aggregationRef, aggregationValue);
-			transaction.update(recentRef, { entries: recentArr });
-			transaction.delete(docRef);
-
-			if (dateValue.isum === 0 && dateValue.osum === 0) {
-				transaction.delete(dateRef);
-			} else {
-				transaction.update(dateRef, dateValue);
-			}
-
-			return Promise.resolve(true);
-		}).then(() => {
-			this.props.openSnackBar('Data berhasil dihapus!');
+		deleteBonMethod(params).then(result => {
+			this.props.openSnackBar(result.data.responseText);
 			this.reloadList();
-		}).catch((err) => {
-			console.error(err.message);
-			this.props.openSnackBar('Terjadi kesalahan! Coba lagi dalam beberapa saat');
-		});
+		}).catch(this.handleFirebaseErrors);
 	}
 
 	reloadList(){

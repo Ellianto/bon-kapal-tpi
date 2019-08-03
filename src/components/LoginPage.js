@@ -29,9 +29,21 @@ export default class LoginPage extends React.Component {
 
         this.props.showProgressBar();
 
-        fireAuth.signInWithEmailAndPassword(decodeURIComponent(user_name), decodeURIComponent(pass_word))
-        .catch((err) => {
-            this.props.openSnackBar('Terjadi kesalahan ketika login! Coba lagi dalam beberapa saat!');
+        fireAuth.signInWithEmailAndPassword(decodeURIComponent(user_name), decodeURIComponent(pass_word)).catch((err) => {
+            console.error(err.code);
+            let displayMessage = '';
+
+            switch (err.code) {
+                case 'auth/network-request-failed':
+                    displayMessage = 'Terjadi kesalahan ketika login! Coba lagi dalam beberapa saat!';
+                    break;
+            
+                default:
+                    displayMessage = 'Username dan password yang anda masukkan salah!';
+                    break;
+            }
+
+            this.props.openSnackBar(displayMessage);
         });
     }
 

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import {firestore} from '../firebase';
+import {addShipMethod} from '../firebase';
 
 import {Grid, Typography, TextField, Button, Box} from '@material-ui/core';
 
@@ -45,29 +45,14 @@ export default class AddShip extends React.Component {
             return;
         }
 
-        const shipRef = firestore.collection('ship').doc(shipName);
-
-        shipRef.get().then((docSnapshot) => {
-            if(docSnapshot.exists){
-                this.props.openSnackBar('Nama tersebut sudah digunakan! Pilih nama kapal baru');
-            } else {
-
-                shipRef.set({
-                    lastUp: (new Date()).valueOf(),
-                    isum: 0,
-                    osum: 0,
-                    lastBook: '',
-                }, {merge : true}).then(() => {
-                    this.setState({
-                        shipName : '',
-                    });
-
-                    this.props.openSnackBar('Kapal berhasil ditambahkan!');
-                });
-            }
-        }).catch((err) => {
-            console.error(err);
-            this.props.openSnackBar('Terjadi kesalahan! Coba lagi dalam beberapa saat!');            
+        addShipMethod({shipName : shipName}).then(result => {
+            this.setState({
+                shipName : '',
+            });
+            this.props.openSnackBar(result.data.responseText);
+        }).catch(err => {
+            console.error(err.code);
+            this.props.openSnackBar(err.message);
         });
     }
 
@@ -110,7 +95,7 @@ export default class AddShip extends React.Component {
                     <Grid item xs={12}>
                         <Button fullWidth variant='contained' color='primary' size='large' onClick={this.addShip} disabled={this.state.shipName === '' ? true : false}>
                             Tambahkan Kapal
-                            </Button>
+                        </Button>
                     </Grid>
                 </Grid>
             </Box>
