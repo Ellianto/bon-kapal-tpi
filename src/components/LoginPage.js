@@ -59,6 +59,7 @@ export default class LoginPage extends React.Component {
                             onChange={this.handleStringChange}
                             value={decodeURIComponent(this.state.uname)}
                             inputProps={{
+                                // eslint-disable-next-line
                                 pattern: '[\w\d@\.]',
                             }}
                         />
@@ -70,6 +71,7 @@ export default class LoginPage extends React.Component {
                             onChange={this.handleStringChange}
                             value={decodeURIComponent(this.state.passwd)}
                             inputProps={{
+                                // eslint-disable-next-line
                                 pattern: '[\w\d]'
                             }}
                         />

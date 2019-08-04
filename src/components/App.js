@@ -1,20 +1,20 @@
 import React from 'react';
-import {BrowserRouter as Router, Route, Switch, Redirect} from 'react-router-dom';
+import {Redirect, Route, Switch, withRouter } from 'react-router-dom';
 
-import AddShip from './AddShip' ;
-import MakeBook from './MakeBook' ;
-import HomePage from './HomePage' ;
-import InputForm from './InputForm' ;
-import LoginPage from './LoginPage' ;
-import DataDisplay from './DataDisplay' ;
-import RecentEntry from './RecentEntry' ;
-import Navbar from './CustomAppBar';
+import { Box, Button, Snackbar, SnackbarContent, Fade, LinearProgress, AppBar, Toolbar, IconButton, Typography } from '@material-ui/core';
+import { Home, MobileOff } from '@material-ui/icons';
 
-import {Snackbar, SnackbarContent, Button, Box} from '@material-ui/core';
-import {History, Search, NoteAdd, PlaylistAdd, Home, Print } from '@material-ui/icons';
 import { fireAuth } from '../firebase';
 
-export default class App extends React.Component{
+import AddShip from './AddShip';
+import DataDisplay from './DataDisplay';
+import HomePage from './HomePage';
+import InputForm from './InputForm';
+import LoginPage from './LoginPage';
+import MakeBook from './MakeBook';
+import RecentEntry from './RecentEntry';
+
+class App extends React.Component{
     constructor(){
         super();
 
@@ -50,59 +50,6 @@ export default class App extends React.Component{
                 isLoading: false,
             });
         }
-
-        this.navLinks = [
-            {
-                id: 'home',
-                link: '/home',
-                icon: <Home />,
-                mainText: 'Home',
-                helpText: 'Halaman Utama',
-                descText: '',
-            },
-            null,
-            {
-                id: 'addBon',
-                link: '/add_bon',
-                icon: <NoteAdd />,
-                mainText: 'Tambah Bon',
-                helpText: 'Tambahkan Bon baru',
-                descText: 'Halaman untuk menambahkan bon baru. Bon-bon yang ditambahkan harus terikat pada suatu kapal. Pastikan anda sudah menambahkan kapal terlebih dahulu',
-            },
-            {
-                id: 'addShip',
-                link: '/add_ship',
-                icon: <PlaylistAdd />,
-                mainText: 'Tambah Kapal',
-                helpText: 'Tambahkan Kapal Baru',
-                descText: 'Halaman untuk mendaftarkan kapal baru. Pastikan anda sudah menambahkan kapal yang anda inginkan sebelum menambahkan bon terkait kapal tersebut.',
-            },
-            null,
-            {
-                id: 'recent',
-                link: '/recent',
-                icon: <History />,
-                mainText: 'Bon Terbaru',
-                helpText: '10 Bon Terbaru',
-                descText: 'Halaman untuk menampilkan 10 bon terakhir yang disimpan. Dari halaman ini, anda bisa memantau langsung penambahan bon-bon baru',
-            },
-            {
-                id: 'show',
-                link: '/show',
-                icon: <Search />,
-                mainText: 'Tampilkan Bon',
-                helpText: 'Cari berdasarkan tanggal',
-                descText: 'Halaman untuk mencari bon. Di halaman ini, anda bisa menampilkan kumpulan bon dari kapal tertentu pada tanggal/bulan/tahun tertentu',
-            },
-            {
-                id: 'print',
-                link: '/print',
-                icon: <Print />,
-                mainText: 'Tutup Buku',
-                helpText: 'Rekap Tahunan/Bulanan',
-                descText: 'Halaman untuk menampilkan hasil rekap tahunan/bulanan untuk kapal yang dicari dalam bentuk tabel yang rapi. Tabel tersebut kemudian dapat dicetak/diprint'
-            },
-        ];
     }
 
     componentDidMount(){
@@ -133,8 +80,33 @@ export default class App extends React.Component{
 
     render(){
         return(
-            <Router>
-                <Navbar openSnackBar={this.openSnackBar} isLoading={this.state.isLoading} navLinks={this.navLinks} user={this.state.user}/>
+            <React.Fragment>
+                <div style={{ flexGrow: 1 }}>
+                    <AppBar>
+                        <Toolbar>
+                            {
+                                this.state.user ?
+                                <IconButton size='medium' color='secondary' edge='start' onClick={() => fireAuth.signOut()}>
+                                    <MobileOff />
+                                </IconButton>
+                                :
+                                <IconButton disabled color='inherit' size='medium' edge='start' style={{ padding: 24 }} />
+                        }
+                        <Typography variant='h5' align='center' style={{ flexGrow: 1 }}>
+                                Bon Kapal
+                        </Typography>
+                            {
+                                this.state.user ?
+                                    <IconButton size='medium' color='secondary' edge='end' onClick={(e) => { this.props.history.push('/home'); }}> <Home /> </IconButton>
+                                :
+                                <IconButton disabled color='inherit' size='medium' edge='end' style={{ padding: 24 }} />
+                            }
+                        </Toolbar>
+                        <Fade in={this.state.isLoading} style={{ transitionDelay: this.state.isLoading ? '500ms' : '0ms' }}>
+                            <LinearProgress color='secondary' />
+                        </Fade>
+                    </AppBar>
+                </div>
                 <Snackbar
                     autoHideDuration={2000}
                     key={this.state.snackBarMessage}
@@ -169,7 +141,9 @@ export default class App extends React.Component{
                         <Route render={props => <LoginPage {...props} user={this.state.user} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
                     }
                 </Switch>
-            </Router>
+            </React.Fragment>
         );
     }
 }
+
+export default withRouter(App);

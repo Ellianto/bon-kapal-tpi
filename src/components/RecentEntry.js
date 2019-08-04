@@ -16,6 +16,7 @@ export default class RecentEntry extends React.Component{
 
         this.state = {
             recentEntries : [],
+            loaded : false,
         };
     }
 
@@ -31,6 +32,7 @@ export default class RecentEntry extends React.Component{
             if(result.data.resultArray.length > 0){
                 this.setState({
                     recentEntries : result.data.resultArray,
+                    loaded : true,
                 });
             }
 
@@ -108,7 +110,8 @@ export default class RecentEntry extends React.Component{
                         </Grid>
                         <Grid item xs={12}>
                             {
-                                this.state.recentEntries.length === 0 ?
+                                this.state.loaded ? 
+                                    this.state.recentEntries.length === 0 ?
                                     <Typography variant='h6' align='center'> Belum ada bon baru </Typography>
                                     :
                                     <List dense style={{ width: '100%' }}>
@@ -116,6 +119,8 @@ export default class RecentEntry extends React.Component{
                                             this.state.recentEntries.map((entry) => this.renderListEntry(entry))
                                         }
                                     </List>
+                                :
+                                null
                             }
                         </Grid>
                     </Grid>

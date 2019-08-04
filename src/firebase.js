@@ -4,13 +4,13 @@ import '@firebase/functions';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyB_7LeEKDkR36kfLmPP-1tMmAiHfYI4IyY",
-    authDomain: "bon-kapal-tpi.firebaseapp.com",
-    databaseURL: "https://bon-kapal-tpi.firebaseio.com",
-    projectId: "bon-kapal-tpi",
-    storageBucket: "bon-kapal-tpi.appspot.com",
-    messagingSenderId: "629513482934",
-    appId: "1:629513482934:web:81d570be921cdc0b"
+    apiKey: "AIzaSyA2GqamzOo3YJyjTgtGu7jtEeXnvPAOndE",
+    authDomain: "bon-kapal.firebaseapp.com",
+    databaseURL: "https://bon-kapal.firebaseio.com",
+    projectId: "bon-kapal",
+    storageBucket: "bon-kapal.appspot.com",
+    messagingSenderId: "296318562493",
+    appId: "1:296318562493:web:4785610aa3cd868f"
 };
 
 // Initialize Firebase
@@ -19,13 +19,13 @@ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
 export default firebase;
 export const fireAuth = firebase.auth();
-export const addShipMethod  = firebase.functions().httpsCallable('addShip');
-export const getShipsMethod = firebase.functions().httpsCallable('getShips');
-export const addBookMethod  = firebase.functions().httpsCallable('addBook');
-export const getBooksMethod = firebase.functions().httpsCallable('getBooks');
-export const openBookMethod = firebase.functions().httpsCallable('openBook');
-export const addBonMethod   = firebase.functions().httpsCallable('addBon');
-export const getBonsMethod  = firebase.functions().httpsCallable('getBons');
-export const editBonMethod  = firebase.functions().httpsCallable('editBon');
-export const deleteBonMethod= firebase.functions().httpsCallable('deleteBon');
-export const getRecentMethod= firebase.functions().httpsCallable('getRecent');
+export const addShipMethod  = firebase.app().functions('asia-east2').httpsCallable('addShip');
+export const getShipsMethod = firebase.app().functions('asia-east2').httpsCallable('getShips');
+export const addBookMethod  = firebase.app().functions('asia-east2').httpsCallable('addBook');
+export const getBooksMethod = firebase.app().functions('asia-east2').httpsCallable('getBooks');
+export const openBookMethod = firebase.app().functions('asia-east2').httpsCallable('openBook');
+export const addBonMethod   = firebase.app().functions('asia-east2').httpsCallable('addBon');
+export const getBonsMethod  = firebase.app().functions('asia-east2').httpsCallable('getBons');
+export const editBonMethod  = firebase.app().functions('asia-east2').httpsCallable('editBon');
+export const deleteBonMethod= firebase.app().functions('asia-east2').httpsCallable('deleteBon');
+export const getRecentMethod= firebase.app().functions('asia-east2').httpsCallable('getRecent');

@@ -1,24 +1,25 @@
+
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 
-const serviceAccount = require("./bon-kapal-tpi-firebase-adminsdk-zot3r-8a65fbd9b8.json");
+const serviceAccount = require("./bon-kapal-firebase-adminsdk-ymrhu-be80b70919.json");
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://bon-kapal-tpi.firebaseio.com"
+    databaseURL: "https://bon-kapal.firebaseio.com"
 });
 
 const lightRuntime = {
-    timeoutSeconds: 300,
-    memory: '128MB'
+    timeoutSeconds: 120,
+    memory: '256MB'
 }
 
 const heavyRuntime = {
-    timeoutSeconds: 480,
+    timeoutSeconds: 300,
     memory: '512MB'
 }
 
-function createDate(){
+function createDate() {
     const now = new Date();
 
     let thisYear = now.getFullYear().toString();
@@ -36,7 +37,8 @@ function createDate(){
     return `${thisYear}${thisMonth}${thisDate}`;
 }
 
-exports.addShip     = functions.runWith(lightRuntime).https.onCall(async (data, context) => {
+
+exports.addShip     = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
     }
@@ -62,12 +64,12 @@ exports.addShip     = functions.runWith(lightRuntime).https.onCall(async (data, 
         }
 
         return responseObj;
-    } catch(err) {
+    } catch (err) {
         throw new functions.https.HttpsError('unavailable', 'Terjadi kesalahan ketika menyimpan nama kapal! Coba lagi dalam beberapa saat!');
     }
 });
 
-exports.getShips    = functions.runWith(lightRuntime).https.onCall(async (data, context) => {
+exports.getShips    = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
     }
@@ -78,12 +80,12 @@ exports.getShips    = functions.runWith(lightRuntime).https.onCall(async (data, 
         const querySnapshot = await shipRef.get();
         let shipList = [];
         let responseObj = { isEmpty: true, shipList: [] };
-        
-        if(!querySnapshot.empty){
+
+        if (!querySnapshot.empty) {
             querySnapshot.forEach(doc => shipList.push(doc.id));
 
-            responseObj = {isEmpty : false, shipList : shipList};
-        } 
+            responseObj = { isEmpty: false, shipList: shipList };
+        }
 
         return responseObj;
     } catch (err) {
@@ -91,7 +93,7 @@ exports.getShips    = functions.runWith(lightRuntime).https.onCall(async (data, 
     }
 });
 
-exports.addBook     = functions.runWith(lightRuntime).https.onCall(async (data, context) => {
+exports.addBook     = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
     }
@@ -179,7 +181,7 @@ exports.addBook     = functions.runWith(lightRuntime).https.onCall(async (data, 
     }
 });
 
-exports.getBooks    = functions.runWith(lightRuntime).https.onCall(async (data, context) => {
+exports.getBooks    = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
     }
@@ -191,24 +193,24 @@ exports.getBooks    = functions.runWith(lightRuntime).https.onCall(async (data, 
 
         const bookArr = [];
 
-        if(!bookQuery.empty){
+        if (!bookQuery.empty) {
             bookQuery.forEach(book => {
                 bookArr.push({
-                    startDate : book.data().startDate,
-                    endDate : book.data().endDate,
-                    isum : book.data().isum,
-                    osum : book.data().osum,
+                    startDate: book.data().startDate,
+                    endDate: book.data().endDate,
+                    isum: book.data().isum,
+                    osum: book.data().osum,
                 });
             });
         }
 
-        return {books : bookArr};
+        return { books: bookArr };
     } catch (error) {
         throw new functions.https.HttpsError('unknown', 'Terjadi kesalahan ketika mengambil daftar buku! Coba lagi dalam beberapa saat!', err.message);
     }
 });
 
-exports.openBook    = functions.runWith(lightRuntime).https.onCall(async (data, context) => {
+exports.openBook    = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
     }
@@ -219,7 +221,7 @@ exports.openBook    = functions.runWith(lightRuntime).https.onCall(async (data, 
 
     let bonRef;
 
-    if(chosenBook.startDate === ''){
+    if (chosenBook.startDate === '') {
         bonRef = shipRef.collection('bon')
             .where(admin.firestore.FieldPath.documentId(), '<=', chosenBook.endDate);
     } else {
@@ -229,37 +231,37 @@ exports.openBook    = functions.runWith(lightRuntime).https.onCall(async (data, 
     }
 
     const bonQuery = await bonRef.get();
-    const iQuery   = await bonRef.firestore.collectionGroup('i').get();
-    const oQuery   = await bonRef.firestore.collectionGroup('o').get();
+    const iQuery = await bonRef.firestore.collectionGroup('i').get();
+    const oQuery = await bonRef.firestore.collectionGroup('o').get();
 
     const dateArr = bonQuery.docs;
-    const iArr    = iQuery.docs;
-    const oArr    = oQuery.docs;
+    const iArr = iQuery.docs;
+    const oArr = oQuery.docs;
 
-    let tempMap   = new Map();
+    let tempMap = new Map();
 
-    for(const dateDoc of dateArr){
+    for (const dateDoc of dateArr) {
         let dateList = [];
         const dateKey = dateDoc.id;
-        
-        for(const iData of iArr){
-            if(iData.ref.parent.parent.id === dateKey){
+
+        for (const iData of iArr) {
+            if (iData.ref.parent.parent.id === dateKey) {
                 dateList.push({
-                    docId : iData.id,
-                    type  : 'i',
-                    info  : iData.data().info,
-                    amount : iData.data().amount,
+                    docId: iData.id,
+                    type: 'i',
+                    info: iData.data().info,
+                    amount: iData.data().amount,
                 });
             }
         }
 
-        for(const oData of oArr){
-            if(oData.ref.parent.parent.id === dateKey){
+        for (const oData of oArr) {
+            if (oData.ref.parent.parent.id === dateKey) {
                 dateList.push({
-                    docId : oData.id,
-                    type  : 'o',
-                    info  : oData.data().info,
-                    amount : oData.data().amount,
+                    docId: oData.id,
+                    type: 'o',
+                    info: oData.data().info,
+                    amount: oData.data().amount,
                 });
             }
         }
@@ -267,10 +269,10 @@ exports.openBook    = functions.runWith(lightRuntime).https.onCall(async (data, 
         tempMap.set(dateKey, dateList);
     }
 
-    return {resultData : Array.from(tempMap)};
+    return { resultData: Array.from(tempMap) };
 });
 
-exports.addBon      = functions.runWith(lightRuntime).https.onCall(async (data, context) => {
+exports.addBon      = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
     }
@@ -280,7 +282,7 @@ exports.addBon      = functions.runWith(lightRuntime).https.onCall(async (data, 
     const shipRef = firestore.collection('ship').doc(data.shipName);
     const aggregationRef = shipRef.collection('aggr').doc(data.year);
     const dateRef = shipRef.collection('bon').doc(data.fullDate);
-    
+
     const transactionType = data.isIncome ? 'i' : 'o';
     const newRef = dateRef.collection(transactionType).doc();
 
@@ -364,14 +366,14 @@ exports.addBon      = functions.runWith(lightRuntime).https.onCall(async (data, 
     }
 });
 
-exports.getBons     = functions.runWith(heavyRuntime).https.onCall(async (data, context) => {
+exports.getBons     = functions.region('asia-east2').runWith(heavyRuntime).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
     }
 
     const bonsRef = admin.firestore().collection('ship').doc(data.shipName).collection('bon')
-                    .where(admin.firestore.FieldPath.documentId(), '>=', data.startDate)
-                    .where(admin.firestore.FieldPath.documentId(), '<=', data.endDate);
+        .where(admin.firestore.FieldPath.documentId(), '>=', data.startDate)
+        .where(admin.firestore.FieldPath.documentId(), '<=', data.endDate);
 
     try {
         const bonsQuery = await bonsRef.get();
@@ -400,18 +402,18 @@ exports.getBons     = functions.runWith(heavyRuntime).https.onCall(async (data, 
             return Promise.resolve(true);
         }));
 
-        if(mapInsertion.includes(false)){
-            throw new functions.https.HttpsError('unknown', 'Terjadi kesalahan ketika membaca daftar bon! Coba lagi dalam beberapa saat!', err.message);            
+        if (mapInsertion.includes(false)) {
+            throw new functions.https.HttpsError('unknown', 'Terjadi kesalahan ketika membaca daftar bon! Coba lagi dalam beberapa saat!', err.message);
         }
 
-        return {bons : Array.from(tempMap)};
+        return { bons: Array.from(tempMap) };
     } catch (err) {
         throw new functions.https.HttpsError('unknown', 'Terjadi kesalahan ketika membaca daftar bon! Coba lagi dalam beberapa saat!', err.message);
     }
 
 });
 
-exports.editBon     = functions.runWith(lightRuntime).https.onCall(async (data, context) => {
+exports.editBon     = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
     }
@@ -425,7 +427,7 @@ exports.editBon     = functions.runWith(lightRuntime).https.onCall(async (data, 
     const shipRef = admin.firestore().collection('ship').doc(data.shipName);
     const aggregationRef = shipRef.collection('aggr').doc(docDate.substring(0, 4));
     const dateRef = shipRef.collection('bon').doc(docDate);
-    const bonRef  = dateRef.collection(transactionType).doc(data.documentId);
+    const bonRef = dateRef.collection(transactionType).doc(data.documentId);
 
     try {
         await admin.firestore().runTransaction(async transaction => {
@@ -445,18 +447,18 @@ exports.editBon     = functions.runWith(lightRuntime).https.onCall(async (data, 
             let aggregationValue = aggregationDoc.data();
             let recentArr = recentDoc.data().entries;
             let dateValue = dateDoc.data();
-            let bonValue  = bonDoc.data();
+            let bonValue = bonDoc.data();
 
 
-            if(data.add){
+            if (data.add) {
                 const amountDiff = newAmount - bonValue.amount;
-                
-                if(transactionType === 'i'){
+
+                if (transactionType === 'i') {
                     shipValue.isum += amountDiff;
                     aggregationValue.isum += amountDiff;
                     aggregationValue.months[parseInt(docDate.substring(4, 6), 10)].isum += amountDiff;
                     dateValue.isum += amountDiff;
-                } else if (transactionType === 'o'){
+                } else if (transactionType === 'o') {
                     shipValue.osum += amountDiff;
                     aggregationValue.osum += amountDiff;
                     aggregationValue.months[parseInt(docDate.substring(4, 6), 10)].osum += amountDiff;
@@ -490,36 +492,36 @@ exports.editBon     = functions.runWith(lightRuntime).https.onCall(async (data, 
 
             const dateStringRef = docDate + transactionType;
 
-            function findEntry(entry){
+            function findEntry(entry) {
                 return entry.ref === dateStringRef && entry.ship === data.shipName;
             }
 
             const entryIndex = recentArr.findIndex(findEntry);
 
-            if(entryIndex >= 0){
+            if (entryIndex >= 0) {
                 recentArr[entryIndex] = {
-                    amount : newAmount,
+                    amount: newAmount,
                     info: data.newInfo,
-                    lastUp : lastUp,
-                    ref : recentArr[entryIndex].ref,
-                    ship : data.shipName,
+                    lastUp: lastUp,
+                    ref: recentArr[entryIndex].ref,
+                    ship: data.shipName,
                 }
             }
 
-            transaction.set(recentRef, {entries : recentArr}, {merge : true});
-            transaction.set(shipRef, shipValue, {merge : true});
-            transaction.set(aggregationRef, aggregationValue, {merge : true});
-            transaction.set(dateRef, dateValue, {merge : true});
-            transaction.set(bonRef, bonValue, {merge : true});
+            transaction.set(recentRef, { entries: recentArr }, { merge: true });
+            transaction.set(shipRef, shipValue, { merge: true });
+            transaction.set(aggregationRef, aggregationValue, { merge: true });
+            transaction.set(dateRef, dateValue, { merge: true });
+            transaction.set(bonRef, bonValue, { merge: true });
         });
 
-        return {responseText  : 'Bon Berhasil Diubah!'};
+        return { responseText: 'Bon Berhasil Diubah!' };
     } catch (err) {
         throw new functions.https.HttpsError('unknown', 'Terjadi kesalahan ketika mengubah bon! Coba lagi dalam beberapa saat!', err.message);
     }
 });
 
-exports.deleteBon   = functions.runWith(heavyRuntime).https.onCall(async (data, context) => {
+exports.deleteBon   = functions.region('asia-east2').runWith(heavyRuntime).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
     }
@@ -602,7 +604,7 @@ exports.deleteBon   = functions.runWith(heavyRuntime).https.onCall(async (data, 
     }
 });
 
-exports.getRecent   = functions.runWith(lightRuntime).https.onCall(async (data, context) => {
+exports.getRecent   = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
     }
@@ -612,10 +614,10 @@ exports.getRecent   = functions.runWith(lightRuntime).https.onCall(async (data, 
     try {
         const recentEntries = await recentRef.get();
 
-        let responseObj = {resultArray : []};
+        let responseObj = { resultArray: [] };
 
-        if(recentEntries.exists){
-            responseObj = {resultArray : recentEntries.data().entries,};
+        if (recentEntries.exists) {
+            responseObj = { resultArray: recentEntries.data().entries, };
         }
 
         return responseObj;

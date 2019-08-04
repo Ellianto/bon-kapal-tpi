@@ -25,3 +25,9 @@ yarn-error.log*
 bon-kapal-tpi-firebase-adminsdk-zot3r-8a65fbd9b8.json
 firebase-debug.log
 .firebase/hosting.YnVpbGQ.cache
+functions/bon-kapal-firebase-adminsdk-ymrhu-be80b70919.json
+.firebase/hosting.YnVpbGQ.cache
+.firebaserc
+firebase.json
+firestore.rules
+firestore.indexes.json

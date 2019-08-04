@@ -187,7 +187,7 @@ export default class MakeBook extends React.Component {
             <React.Fragment>
                 <Box m={4} px={2} py={4} borderRadius={16} border={1} borderColor='grey.500'>
                     <Grid container justify='flex-start' alignItems='stretch' spacing={2}>
-                        <Grid item xs={12} md={8}>
+                        <Grid item xs={12}>
                             <TextField required fullWidth select id='shipSelect' name='shipName' label='Nama Kapal' variant='outlined'
                                 helperText='Nama Kapal yang ingin direkap bonnya'
                                 value={decodeURIComponent(this.state.shipName)}
@@ -209,8 +209,8 @@ export default class MakeBook extends React.Component {
                                 }
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} md={4}>
-                            <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleDialogOpen} disabled={this.state.shipName === '' ? true : false} style={{height : 56}}>
+                        <Grid item xs={12} md={6}>
+                            <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleDialogOpen} disabled={this.state.shipName === '' ? true : false}>
                                 Tampilkan Buku-Buku
                             </Button>
                             <Dialog open={this.state.openDialog} onClose={this.handleDialogClose}>
@@ -248,8 +248,8 @@ export default class MakeBook extends React.Component {
                                 </DialogActions>
                             </Dialog>
                         </Grid>
-                        <Grid item xs={12}>
-                            <Button fullWidth variant='contained' color='primary' size='large' onClick={() => this.closeBook()} disabled={this.state.shipName === '' ? true : false} style={{ height: 56 }}>
+                        <Grid item xs={12} md={6}>
+                            <Button fullWidth variant='contained' color='primary' size='large' onClick={() => this.closeBook()} disabled={this.state.shipName === '' ? true : false}>
                                 Tutup Buku
                             </Button>
                         </Grid>
@@ -265,7 +265,7 @@ export default class MakeBook extends React.Component {
                                     <React.Fragment>
                                         <ReactToPrint
                                             content={() => this.componentRef}
-                                            trigger={() => <Button fullWidth variant='contained' color='primary' size='large' style={{ marginBottom: 8 , height: 56}}> Cetak Buku </Button>}
+                                            trigger={() => <Button fullWidth variant='contained' color='primary' size='large' style={{ marginBottom: 8 }}> Cetak Buku </Button>}
                                         />
                                         <PrintableTable
                                             ref={el => (this.componentRef = el)}
