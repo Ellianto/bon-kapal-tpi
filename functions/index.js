@@ -93,94 +93,6 @@ exports.getShips    = functions.region('asia-east2').runWith(lightRuntime).https
     }
 });
 
-exports.addBook     = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
-    }
-
-    const shipRef = admin.firestore().collection('ship').doc(data.shipName);
-    const bookRef = shipRef.collection('book');
-
-    try {
-        const [dateArr, iArr, oArr, greenSum, redSum] = await admin.firestore().runTransaction(async (transaction) => {
-            const shipDoc = await transaction.get(shipRef);
-            const shipData = shipDoc.data();
-            const startDate = shipData.lastBook;
-            const endDate = createDate();
-            let bonRef;
-            if (startDate === '') {
-                bonRef = shipRef.collection('bon')
-                    .where(admin.firestore.FieldPath.documentId(), '<=', endDate);
-            }
-            else {
-                bonRef = shipRef.collection('bon')
-                    .where(admin.firestore.FieldPath.documentId(), '>', startDate)
-                    .where(admin.firestore.FieldPath.documentId(), '<=', endDate);
-            }
-            const bonQuery = await bonRef.get();
-            if (bonQuery.empty) {
-                transaction.set(shipRef, shipData);
-                return [[], [], [], 0, 0];
-            }
-            const iQuery = bonRef.firestore.collectionGroup('i');
-            const oQuery = bonRef.firestore.collectionGroup('o');
-            const [iDocs, oDocs] = await Promise.all([
-                iQuery.get(),
-                oQuery.get(),
-            ]);
-            await transaction.set(bookRef.doc(endDate), {
-                startDate: startDate,
-                endDate: endDate,
-                isum: shipData.isum,
-                osum: shipData.osum,
-            }, { merge: true });
-            await transaction.set(shipRef, {
-                isum: 0,
-                osum: 0,
-                lastUp: (new Date()).valueOf(),
-                lastBook: endDate,
-            }, { merge: true });
-            return [bonQuery.docs, iDocs.docs, oDocs.docs, shipData.isum, shipData.osum];
-        });
-        let isEmpty = true;
-        let tempArr = [];
-        if (dateArr.length > 0) {
-            let tempMap = new Map();
-            for (const dateDoc of dateArr) {
-                let dateList = [];
-                const dateKey = dateDoc.id;
-                for (const iData of iArr) {
-                    if (iData.ref.parent.parent.id === dateKey) {
-                        dateList.push({
-                            docId: iData.id,
-                            type: 'i',
-                            info: iData.data().info,
-                            amount: iData.data().amount,
-                        });
-                    }
-                }
-                for (const oData of oArr) {
-                    if (oData.ref.parent.parent.id === dateKey) {
-                        dateList.push({
-                            docId: oData.id,
-                            type: 'o',
-                            info: oData.data().info,
-                            amount: oData.data().amount,
-                        });
-                    }
-                }
-                tempMap.set(dateKey, dateList);
-            }
-            tempArr = Array.from(tempMap);
-            isEmpty = false;
-        }
-        return { isEmpty: isEmpty, resultData: tempArr, incomeSum: greenSum, expenseSum: redSum };
-    }
-    catch (err) {
-        throw new functions.https.HttpsError('unknown', 'Terjadi kesalahan ketika menutup buku! Coba lagi dalam beberapa saat!', err.message);
-    }
-});
-
 exports.getBooks    = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
@@ -272,13 +184,113 @@ exports.openBook    = functions.region('asia-east2').runWith(lightRuntime).https
     return { resultData: Array.from(tempMap) };
 });
 
+exports.aggrBon = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
+    }
+
+    const shipRef = admin.firestore().collection('ship').doc(data.shipName);
+
+    try {
+        const [dateArr, iArr, oArr, greenSum, redSum] = await admin.firestore().runTransaction(async (transaction) => {
+            const shipDoc = await transaction.get(shipRef);
+            const shipData = shipDoc.data();
+            const startDate = shipData.lastBook;
+            const endDate = createDate();
+            let bonRef;
+            if (startDate === '') {
+                bonRef = shipRef.collection('bon')
+                    .where(admin.firestore.FieldPath.documentId(), '<=', endDate);
+            }
+            else {
+                bonRef = shipRef.collection('bon')
+                    .where(admin.firestore.FieldPath.documentId(), '>', startDate)
+                    .where(admin.firestore.FieldPath.documentId(), '<=', endDate);
+            }
+            const bonQuery = await bonRef.get();
+            if (bonQuery.empty) {
+                transaction.set(shipRef, shipData);
+                return [[], [], [], 0, 0];
+            }
+            const iQuery = bonRef.firestore.collectionGroup('i');
+            const oQuery = bonRef.firestore.collectionGroup('o');
+            const [iDocs, oDocs] = await Promise.all([
+                iQuery.get(),
+                oQuery.get(),
+            ]);
+
+            await transaction.set(shipRef, {
+                isum: 0,
+                osum: 0,
+                lastUp: (new Date()).valueOf(),
+                lastBook: endDate,
+            }, { merge: true });
+
+            if(data.save){
+                const bookRef = shipRef.collection('book');
+                await transaction.set(bookRef.doc(endDate), {
+                    startDate: startDate,
+                    endDate: endDate,
+                    isum: shipData.isum,
+                    osum: shipData.osum,
+                }, { merge: true });
+                await transaction.set(shipRef, {
+                    isum: 0,
+                    osum: 0,
+                    lastUp: (new Date()).valueOf(),
+                    lastBook: endDate,
+                }, { merge: true });
+            } else {
+                await transaction.set(shipRef, shipData);
+            }
+            return [bonQuery.docs, iDocs.docs, oDocs.docs, shipData.isum, shipData.osum];
+        });
+
+        let isEmpty = true;
+        let tempArr = [];
+        if (dateArr.length > 0) {
+            let tempMap = new Map();
+            for (const dateDoc of dateArr) {
+                let dateList = [];
+                const dateKey = dateDoc.id;
+                for (const iData of iArr) {
+                    if (iData.ref.parent.parent.id === dateKey) {
+                        dateList.push({
+                            docId: iData.id,
+                            type: 'i',
+                            info: iData.data().info,
+                            amount: iData.data().amount,
+                        });
+                    }
+                }
+                for (const oData of oArr) {
+                    if (oData.ref.parent.parent.id === dateKey) {
+                        dateList.push({
+                            docId: oData.id,
+                            type: 'o',
+                            info: oData.data().info,
+                            amount: oData.data().amount,
+                        });
+                    }
+                }
+                tempMap.set(dateKey, dateList);
+            }
+            tempArr = Array.from(tempMap);
+            isEmpty = false;
+        }
+        return { isEmpty: isEmpty, resultData: tempArr, incomeSum: greenSum, expenseSum: redSum };
+    }
+    catch (err) {
+        throw new functions.https.HttpsError('unknown', 'Terjadi kesalahan ketika menutup buku! Coba lagi dalam beberapa saat!', err.message);
+    }
+});
+
 exports.addBon      = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
     }
 
     const firestore = admin.firestore();
-    const recentRef = firestore.collection('recent').doc('entry');
     const shipRef = firestore.collection('ship').doc(data.shipName);
     const aggregationRef = shipRef.collection('aggr').doc(data.year);
     const dateRef = shipRef.collection('bon').doc(data.fullDate);
@@ -288,8 +300,7 @@ exports.addBon      = functions.region('asia-east2').runWith(lightRuntime).https
 
     try {
         await firestore.runTransaction(async (transaction) => {
-            const [recentDoc, shipDoc, aggregationDoc, dateDoc] = await Promise.all([
-                transaction.get(recentRef),
+            const [shipDoc, aggregationDoc, dateDoc] = await Promise.all([
                 transaction.get(shipRef),
                 transaction.get(aggregationRef),
                 transaction.get(dateRef),
@@ -316,7 +327,6 @@ exports.addBon      = functions.region('asia-east2').runWith(lightRuntime).https
 
             let shipValue = shipDoc.data();
             let dateValue = dateDoc.exists ? dateDoc.data() : { isum: 0, osum: 0, lastUp: 0 };
-            let recentArr = recentDoc.exists ? recentDoc.data().entries : [];
 
             const lastUp = (new Date()).valueOf();
 
@@ -326,15 +336,6 @@ exports.addBon      = functions.region('asia-east2').runWith(lightRuntime).https
                 info: data.info,
             };
 
-            const newLength = recentArr.unshift({
-                ship: data.shipName,
-                ref: data.fullDate + transactionType,
-                ...newEntry,
-            });
-
-            if (newLength > 10) {
-                recentArr.pop();
-            }
             if (data.isIncome) {
                 shipValue.isum += data.amount;
                 dateValue.isum += data.amount;
@@ -354,7 +355,6 @@ exports.addBon      = functions.region('asia-east2').runWith(lightRuntime).https
 
             transaction.set(shipRef, shipValue, { merge: true });
             transaction.set(aggregationRef, aggregationValue, { merge: true });
-            transaction.set(recentRef, { entries: recentArr }, { merge: true });
             transaction.set(dateRef, dateValue, { merge: true });
             transaction.set(newRef, newEntry, { merge: true });
             return Promise.resolve(true);
@@ -371,7 +371,7 @@ exports.getBons     = functions.region('asia-east2').runWith(heavyRuntime).https
         throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
     }
 
-    const bonsRef = admin.firestore().collection('ship').doc(data.shipName).collection('bon')
+    const bonsRef = admin.firestore().collection('ship').doc(data.shipName).collection('bon').orderBy(admin.firestore.FieldPath.documentId(), 'asc')
         .where(admin.firestore.FieldPath.documentId(), '>=', data.startDate)
         .where(admin.firestore.FieldPath.documentId(), '<=', data.endDate);
 
@@ -423,7 +423,6 @@ exports.editBon     = functions.region('asia-east2').runWith(lightRuntime).https
 
     const newAmount = data.newAmount;
 
-    const recentRef = admin.firestore().collection('recent').doc('entry');
     const shipRef = admin.firestore().collection('ship').doc(data.shipName);
     const aggregationRef = shipRef.collection('aggr').doc(docDate.substring(0, 4));
     const dateRef = shipRef.collection('bon').doc(docDate);
@@ -431,21 +430,19 @@ exports.editBon     = functions.region('asia-east2').runWith(lightRuntime).https
 
     try {
         await admin.firestore().runTransaction(async transaction => {
-            const [shipDoc, aggregationDoc, dateDoc, bonDoc, recentDoc] = await Promise.all([
+            const [shipDoc, aggregationDoc, dateDoc, bonDoc] = await Promise.all([
                 transaction.get(shipRef),
                 transaction.get(aggregationRef),
                 transaction.get(dateRef),
                 transaction.get(bonRef),
-                transaction.get(recentRef),
             ]);
 
-            if (!aggregationDoc.exists || !recentDoc.exists || !dateDoc.exists || !bonDoc.exists || !shipDoc.exists) {
+            if (!aggregationDoc.exists || !dateDoc.exists || !bonDoc.exists || !shipDoc.exists) {
                 throw new functions.https.HttpsError('not-found', 'Bon yang ingin diubah tidak dapat ditemukan!');
             }
 
             let shipValue = shipDoc.data();
             let aggregationValue = aggregationDoc.data();
-            let recentArr = recentDoc.data().entries;
             let dateValue = dateDoc.data();
             let bonValue = bonDoc.data();
 
@@ -490,25 +487,6 @@ exports.editBon     = functions.region('asia-east2').runWith(lightRuntime).https
             dateValue.lastUp = lastUp;
             bonValue.lastUp = lastUp;
 
-            const dateStringRef = docDate + transactionType;
-
-            function findEntry(entry) {
-                return entry.ref === dateStringRef && entry.ship === data.shipName;
-            }
-
-            const entryIndex = recentArr.findIndex(findEntry);
-
-            if (entryIndex >= 0) {
-                recentArr[entryIndex] = {
-                    amount: newAmount,
-                    info: data.newInfo,
-                    lastUp: lastUp,
-                    ref: recentArr[entryIndex].ref,
-                    ship: data.shipName,
-                }
-            }
-
-            transaction.set(recentRef, { entries: recentArr }, { merge: true });
             transaction.set(shipRef, shipValue, { merge: true });
             transaction.set(aggregationRef, aggregationValue, { merge: true });
             transaction.set(dateRef, dateValue, { merge: true });
@@ -529,7 +507,6 @@ exports.deleteBon   = functions.region('asia-east2').runWith(heavyRuntime).https
     const transactionType = data.transactionType;
     const docDate = data.documentDate;
 
-    const recentRef = admin.firestore().collection('recent').doc('entry');
     const shipRef = admin.firestore().collection('ship').doc(data.shipName);
     const aggregationRef = shipRef.collection('aggr').doc(docDate.substring(0, 4));
     const dateRef = shipRef.collection('bon').doc(docDate);
@@ -537,19 +514,17 @@ exports.deleteBon   = functions.region('asia-east2').runWith(heavyRuntime).https
 
     try {
         await admin.firestore().runTransaction(async transaction => {
-            const [recentDoc, shipDoc, aggregationDoc, dateDoc, bonDoc] = await Promise.all([
-                transaction.get(recentRef),
+            const [shipDoc, aggregationDoc, dateDoc, bonDoc] = await Promise.all([
                 transaction.get(shipRef),
                 transaction.get(aggregationRef),
                 transaction.get(dateRef),
                 transaction.get(bonRef),
             ]);
 
-            if (!recentDoc.exists || !shipDoc.exists || !aggregationDoc.exists || !dateDoc.exists || !bonDoc.exists) {
+            if (!shipDoc.exists || !aggregationDoc.exists || !dateDoc.exists || !bonDoc.exists) {
                 throw new functions.https.HttpsError('not-found', 'Bon yang dipilih tidak valid!');
             }
 
-            let recentArr = recentDoc.data().entries;
             let shipValue = shipDoc.data();
             let aggregationValue = aggregationDoc.data();
             let dateValue = dateDoc.data();
@@ -561,10 +536,10 @@ exports.deleteBon   = functions.region('asia-east2').runWith(heavyRuntime).https
                 aggregationValue.months[parseInt(docDate.substring(4, 6), 10)].isum -= bonValue.amount;
                 dateValue.isum -= bonValue.amount;
             } else {
-                shipValue.isum += bonValue.amount;
-                aggregationValue.isum += bonValue.amount;
-                aggregationValue.months[parseInt(docDate.substring(4, 6), 10)].isum += bonValue.amount;
-                dateValue.isum += bonValue.amount;
+                shipValue.osum -= bonValue.amount;
+                aggregationValue.osum -= bonValue.amount;
+                aggregationValue.months[parseInt(docDate.substring(4, 6), 10)].osum -= bonValue.amount;
+                dateValue.osum -= bonValue.amount;
             }
 
             const lastUp = (new Date()).valueOf();
@@ -573,21 +548,8 @@ exports.deleteBon   = functions.region('asia-east2').runWith(heavyRuntime).https
             dateValue.lastUp = lastUp;
             shipValue.lastUp = lastUp;
 
-            const documentString = data.documentDate + data.transactionType;
-
-            function findDocument(entry) {
-                return entry.ref === documentString;
-            }
-
-            const entryIndex = recentArr.findIndex(findDocument);
-
-            if (entryIndex >= 0) {
-                recentArr.splice(entryIndex, 1);
-            }
-
             transaction.update(shipRef, shipValue);
             transaction.update(aggregationRef, aggregationValue);
-            transaction.update(recentRef, { entries: recentArr });
 
             transaction.delete(bonRef);
 
@@ -601,27 +563,5 @@ exports.deleteBon   = functions.region('asia-east2').runWith(heavyRuntime).https
         return { responseText: 'Bon berhasil dihapus!' };
     } catch (err) {
         throw new functions.https.HttpsError('unknown', 'Terjadi kesalahan ketika menghapus bon! Coba lagi dalam beberapa saat!', err.message);
-    }
-});
-
-exports.getRecent   = functions.region('asia-east2').runWith(lightRuntime).https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'Anda harus login terlebih dahulu!');
-    }
-
-    const recentRef = admin.firestore().collection('recent').doc('entry');
-
-    try {
-        const recentEntries = await recentRef.get();
-
-        let responseObj = { resultArray: [] };
-
-        if (recentEntries.exists) {
-            responseObj = { resultArray: recentEntries.data().entries, };
-        }
-
-        return responseObj;
-    } catch (err) {
-        throw new functions.https.HttpsError('unknown', 'Terjadi kesalahan ketika mengambil bon-bon terbaru! Buka ulang halaman ini untuk mencoba lagi!', err.message);
     }
 });

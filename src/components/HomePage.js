@@ -1,7 +1,7 @@
 import React from 'react';
 
 import {Box, Grid, Card, Typography, CardContent, Button, Zoom} from '@material-ui/core';
-import {Home, NoteAdd, PlaylistAdd, History, Search, Print} from '@material-ui/icons';
+import {Home, NoteAdd, PlaylistAdd, Search, Print} from '@material-ui/icons';
 
 export default class HomePage extends React.Component {
     render(){
@@ -33,14 +33,6 @@ export default class HomePage extends React.Component {
             },
             null,
             {
-                id: 'recent',
-                link: '/recent',
-                icon: <History />,
-                mainText: 'Bon Terbaru',
-                helpText: '10 Bon Terbaru',
-                descText: 'Halaman untuk menampilkan 10 bon terakhir yang disimpan. Dari halaman ini, anda bisa memantau langsung penambahan bon-bon baru',
-            },
-            {
                 id: 'show',
                 link: '/show',
                 icon: <Search />,
@@ -52,7 +44,7 @@ export default class HomePage extends React.Component {
                 id: 'print',
                 link: '/print',
                 icon: <Print />,
-                mainText: 'Tutup Buku',
+                mainText: 'Pembukuan',
                 helpText: 'Rekap Tahunan/Bulanan',
                 descText: 'Halaman untuk menampilkan hasil rekap tahunan/bulanan untuk kapal yang dicari dalam bentuk tabel yang rapi. Tabel tersebut kemudian dapat dicetak/diprint'
             },
@@ -64,11 +56,11 @@ export default class HomePage extends React.Component {
                     {navLinks.map((item, idx) => {
                         if (idx > 0 && item !== null) {
                             return (
-                                <Grid item xs={12} md={4} key={item.id}>
+                                <Grid item xs={12} md={6} key={item.id}>
                                     <Zoom in style={{ transitionDelay: (idx * 85).toString() + 'ms' }}>
                                         <Card onClick={(e) => { this.props.history.push(item.link); }}>
                                             <CardContent>
-                                                <Typography variant='h5' component='p'> {item.mainText} </Typography>
+                                                <Typography variant='h5' component='p' align='center'> {item.mainText} </Typography>
                                                 <Typography variant='body2' align='justify' component='p' style={{ marginBottom: 8, marginTop: 8 }}>
                                                     {item.descText}
                                                 </Typography>

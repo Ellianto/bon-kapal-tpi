@@ -4,11 +4,12 @@ import {getShipsMethod, addBonMethod} from '../firebase';
 
 import {TextField, InputAdornment, Button, Grid, Typography, Box} from '@material-ui/core';
 
+import {green, red} from '@material-ui/core/colors';
+
 export default class InputForm extends React.Component {
     constructor(props) {
         super(props);
 
-        this.formatDate = this.formatDate.bind(this);
         this.formatCurrency = this.formatCurrency.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
         this.handleDateChange = this.handleDateChange.bind(this);
@@ -29,14 +30,32 @@ export default class InputForm extends React.Component {
             }
         ];
 
+        const now = new Date();
+
+        let thisYear = now.getFullYear().toString();
+        let thisMonth = (now.getMonth() + 1).toString();
+        let thisDate = now.getDate().toString();
+
+        if (thisMonth.length === 1) {
+            thisMonth = '0' + thisMonth;
+        }
+
+        if (thisDate.length === 1) {
+            thisDate = '0' + thisDate;
+        }
+
+        const dateFormat = `${thisYear}-${thisMonth}-${thisDate}`;
+
         this.state = {
             ship: '',
             info: '',
             amount: '0',
             transaction: 'pengeluaran',
-            date: this.formatDate(),
+            date: dateFormat,
             shipList : [],
+            isLoading : false,
         };
+
     }
 
     handleFirebaseErrors(err){
@@ -65,24 +84,6 @@ export default class InputForm extends React.Component {
         }).catch(this.handleFirebaseErrors);
     }
 
-    formatDate(){
-        const now = new Date();
-
-        let thisYear = now.getFullYear().toString();
-        let thisMonth = (now.getMonth() + 1).toString();
-        let thisDate = now.getDate().toString();
-
-        if(thisMonth.length === 1){
-            thisMonth = '0' + thisMonth;
-        }
-
-        if(thisDate.length === 1){
-            thisDate = '0' + thisDate;
-        }
-
-        return `${thisYear}-${thisMonth}-${thisDate}`;
-    }
-
     formatCurrency(numString){
         let inputString = numString.split('');
         let upperLimit = Math.floor(numString.length / 3);
@@ -102,6 +103,11 @@ export default class InputForm extends React.Component {
 
     handleSubmit(e) {
         e.preventDefault();
+
+        this.setState({
+            isLoading : true,
+        });
+
 		this.props.showProgressBar();
 
         if(this.state.info === ''){
@@ -139,7 +145,7 @@ export default class InputForm extends React.Component {
             fullDate : inputDate,
             isIncome: this.state.transaction === 'pemasukan',
             amount: parseInt(this.state.amount, 10),
-            info : this.state.info,
+            info : this.state.info.trim(),
         }
 
         addBonMethod(params).then(result => {
@@ -147,9 +153,9 @@ export default class InputForm extends React.Component {
                 this.props.openSnackBar(result.data.message);
                 this.setState({
                     transaction: 'pengeluaran',
-                    date: this.formatDate(),
                     info: '',
                     amount: '0',
+                    isLoading : false,
                 });
             }
         }).catch(this.handleFirebaseErrors);
@@ -224,7 +230,6 @@ export default class InputForm extends React.Component {
                                         </option>
                                     ))
                             }
-
                         </TextField>
                     </Grid>
 
@@ -266,7 +271,7 @@ export default class InputForm extends React.Component {
                     </Grid>
 
                     <Grid item xs={12}>
-                        <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleSubmit} disabled={this.notProperlyFilled() ? true : false}>
+                        <Button fullWidth variant='contained' style={{backgroundColor : this.state.transaction === 'pemasukan' ? green[300] : red['A200']}} size='large' onClick={this.handleSubmit} disabled={this.notProperlyFilled() || this.state.isLoading ? true : false}>
                             Tambahkan Bon
                         </Button>
                     </Grid>

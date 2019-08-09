@@ -98,15 +98,23 @@ export default class DataDisplay extends React.Component {
 			docOldInfo: '',
 			docOldAmount: '0',
 			submitted : false,
+			isLoading : false,
 		};
 	}
 
 	handleFirebaseErrors(err) {
 		console.error(err.code);
 		this.props.openSnackBar(err.message);
+
+		this.setState({
+			isLoading: false,
+		});
 	}
 
 	componentDidMount() {
+		this.setState({
+			isLoading: true,
+		});
 		this.props.showProgressBar();
 
 		getShipsMethod({}).then(result => {
@@ -121,6 +129,7 @@ export default class DataDisplay extends React.Component {
 			this.setState({
 				shipList: shipList,
 				shipName: shipName,
+				isLoading : false,
 			});
 
 			this.props.closeProgressBar();
@@ -156,6 +165,10 @@ export default class DataDisplay extends React.Component {
 	}
 
 	fetchData(){
+		this.setState({
+			isLoading: true,
+		});
+
 		this.props.showProgressBar();
 
 		const shipName = this.state.shipName;
@@ -175,9 +188,10 @@ export default class DataDisplay extends React.Component {
 
 		getBonsMethod(params).then(result => {
 			this.setState({
-				items : result.data.bons,
+				items : result.data.bons.sort((a,b) => a[0]-b[0]),
 				shownShip : shipName,
 				submitted : true,
+				isLoading : false,
 			});
 
 			this.props.closeProgressBar();
@@ -185,6 +199,10 @@ export default class DataDisplay extends React.Component {
 	}
 
 	editData() {
+		this.setState({
+			isLoading: true,
+		});
+
 		this.props.showProgressBar();
 
 		const oldInfo = this.state.docOldInfo;
@@ -205,6 +223,7 @@ export default class DataDisplay extends React.Component {
 				docAmount: '0',
 				docOldInfo: '',
 				docOldAmount: '0',
+				isLoading : false,
 			});
 
 			return;
@@ -230,6 +249,7 @@ export default class DataDisplay extends React.Component {
 				docAmount: '0',
 				docOldInfo: '',
 				docOldAmount: '0',
+				isLoading : false,
 			});
 
 			this.props.openSnackBar(result.data.responseText);
@@ -238,6 +258,9 @@ export default class DataDisplay extends React.Component {
 	}
 
 	deleteData(docId, date, type) {
+		this.setState({
+			isLoading: true,
+		});
 		this.props.showProgressBar();
 
 		const params = {
@@ -249,6 +272,9 @@ export default class DataDisplay extends React.Component {
 
 		deleteBonMethod(params).then(result => {
 			this.props.openSnackBar(result.data.responseText);
+			this.setState({
+				isLoading: false,
+			});
 			this.reloadList();
 		}).catch(this.handleFirebaseErrors);
 	}

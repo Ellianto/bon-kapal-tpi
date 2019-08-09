@@ -10,32 +10,17 @@ export default class AddShip extends React.Component {
 
         this.handleStringChange = this.handleStringChange.bind(this);
         this.addShip = this.addShip.bind(this);
-        this.formatDate = this.formatDate.bind(this);
 
         this.state = {
             shipName : '',
+            isLoading : false,
         };
     }
 
-    formatDate() {
-        const now = new Date();
-
-        let thisYear = now.getFullYear().toString();
-        let thisMonth = (now.getMonth() + 1).toString();
-        let thisDate = now.getDate().toString();
-
-        if (thisMonth.length === 1) {
-            thisMonth = '0' + thisMonth;
-        }
-
-        if (thisDate.length === 1) {
-            thisDate = '0' + thisDate;
-        }
-
-        return `${thisYear}${thisMonth}${thisDate}`;
-    }
-
     addShip(){
+        this.setState({
+            isLoading: true,
+        });
         this.props.showProgressBar();
 
         const shipName = this.state.shipName;
@@ -48,11 +33,15 @@ export default class AddShip extends React.Component {
         addShipMethod({shipName : shipName}).then(result => {
             this.setState({
                 shipName : '',
+                isLoading : false,
             });
             this.props.openSnackBar(result.data.responseText);
         }).catch(err => {
             console.error(err.code);
             this.props.openSnackBar(err.message);
+            this.setState({
+                isLoading: false,
+            });
         });
     }
 

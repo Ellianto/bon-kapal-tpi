@@ -21,7 +21,7 @@ export default firebase;
 export const fireAuth = firebase.auth();
 export const addShipMethod  = firebase.app().functions('asia-east2').httpsCallable('addShip');
 export const getShipsMethod = firebase.app().functions('asia-east2').httpsCallable('getShips');
-export const addBookMethod  = firebase.app().functions('asia-east2').httpsCallable('addBook');
+export const aggrBonMethod  = firebase.app().functions('asia-east2').httpsCallable('aggrBon');
 export const getBooksMethod = firebase.app().functions('asia-east2').httpsCallable('getBooks');
 export const openBookMethod = firebase.app().functions('asia-east2').httpsCallable('openBook');
 export const addBonMethod   = firebase.app().functions('asia-east2').httpsCallable('addBon');

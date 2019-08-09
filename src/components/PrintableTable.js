@@ -7,35 +7,7 @@ import {TrendingUp, TrendingDown, TrendingFlat} from '@material-ui/icons'
 export default class PrintableTable extends React.Component {
     constructor(props) {
         super(props);
-        this.formatDate = this.formatDate.bind(this);
         this.formatCurrency = this.formatCurrency.bind(this);
-        this.printDate = this.printDate.bind(this);
-    }
-
-    printDate(dateString) {
-        const year = dateString.substring(0, 4);
-        const month = dateString.substring(4, 6);
-        const date = dateString.substring(6);
-
-        return `${date}/${month}/${year}`;
-    }
-
-    formatDate() {
-        const now = new Date();
-
-        let thisYear = now.getFullYear().toString();
-        let thisMonth = (now.getMonth() + 1).toString();
-        let thisDate = now.getDate().toString();
-
-        if (thisMonth.length === 1) {
-            thisMonth = '0' + thisMonth;
-        }
-
-        if (thisDate.length === 1) {
-            thisDate = '0' + thisDate;
-        }
-
-        return `${thisYear}${thisMonth}${thisDate}`;
     }
 
     formatCurrency(numString) {
@@ -69,7 +41,7 @@ export default class PrintableTable extends React.Component {
 
                             {
                                 this.props.greenSum > this.props.redSum ?
-                                    <Chip label={'Profit : ' + (this.formatCurrency(this.props.redSum - this.props.greenSum))} icon={<TrendingUp />} style={{ backgroundColor: green[300] }} />
+                                    <Chip label={'Profit : ' + (this.formatCurrency(this.props.greenSum - this.props.redSum))} icon={<TrendingUp />} style={{ backgroundColor: green[300] }} />
                                     :
                                     (
                                         this.props.redSum > this.props.greenSum ?
@@ -109,7 +81,7 @@ export default class PrintableTable extends React.Component {
                                 return value.map((doc) => {
                                     return (
                                         <TableRow key={doc.docId}>
-                                            <TableCell align='center'> {this.printDate(key)} </TableCell>
+                                            <TableCell align='center'> {this.props.printDate(key)} </TableCell>
                                             <TableCell align='center'> {decodeURIComponent(doc.info)} </TableCell>
                                             <TableCell align='right'>  {doc.type === 'i' ? this.formatCurrency(doc.amount) : '-'} </TableCell>
                                             <TableCell align='right'>  {doc.type === 'o' ? this.formatCurrency(doc.amount) : '-'} </TableCell>

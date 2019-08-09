@@ -7,12 +7,11 @@ import { Home, MobileOff } from '@material-ui/icons';
 import { fireAuth } from '../firebase';
 
 import AddShip from './AddShip';
-import DataDisplay from './DataDisplay';
+import MakeBook from './MakeBook';
 import HomePage from './HomePage';
 import InputForm from './InputForm';
 import LoginPage from './LoginPage';
-import MakeBook from './MakeBook';
-import RecentEntry from './RecentEntry';
+import DataDisplay from './DataDisplay';
 
 class App extends React.Component{
     constructor(){
@@ -130,7 +129,6 @@ class App extends React.Component{
                         this.state.user ? 
                         <React.Fragment>
                             <Route exact path='/home'       render={props => <HomePage    {...props} navLinks={this.navLinks} />} />
-                            <Route exact path='/recent'     render={props => <RecentEntry {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
                             <Route exact path='/add_bon'    render={props => <InputForm   {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
                             <Route exact path='/show'       render={props => <DataDisplay {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />
                             <Route exact path='/add_ship'   render={props => <AddShip     {...props} showProgressBar={this.showProgressBar} closeProgressBar={this.closeProgressBar} openSnackBar={this.openSnackBar} />} />

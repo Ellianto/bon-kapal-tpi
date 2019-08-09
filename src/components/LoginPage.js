@@ -12,6 +12,7 @@ export default class LoginPage extends React.Component {
         this.handleLogin = this.handleLogin.bind(this);
 
         this.state = {
+            isLoading : false,
             uname : '',
             passwd : '',
         }
@@ -24,10 +25,14 @@ export default class LoginPage extends React.Component {
     }
 
     handleLogin(){
-        const user_name = this.state.uname;
-        const pass_word = this.state.passwd;
+        this.setState({
+            isLoading: true,
+        });
 
         this.props.showProgressBar();
+
+        const user_name = this.state.uname;
+        const pass_word = this.state.passwd;
 
         fireAuth.signInWithEmailAndPassword(decodeURIComponent(user_name), decodeURIComponent(pass_word)).catch((err) => {
             console.error(err.code);
@@ -44,6 +49,9 @@ export default class LoginPage extends React.Component {
             }
 
             this.props.openSnackBar(displayMessage);
+            this.setState({
+                isLoading: false,
+            });
         });
     }
 
@@ -77,7 +85,7 @@ export default class LoginPage extends React.Component {
                         />
                     </Grid>
                     <Grid item xs={12}>
-                        <Button fullWidth variant='contained' size='large' color='primary' onClick={this.handleLogin} disabled={this.state.uname === '' || this.state.passwd === '' ? true : false}>
+                        <Button fullWidth variant='contained' size='large' color='primary' onClick={this.handleLogin} disabled={this.state.isLoading || this.state.uname === '' || this.state.passwd === '' ? true : false}>
                             Login
                     </Button>
                     </Grid>

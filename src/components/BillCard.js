@@ -2,7 +2,7 @@ import React from 'react';
 
 import {Card, CardHeader, CardContent, ExpansionPanel, ExpansionPanelSummary, ExpansionPanelDetails, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Badge, Typography} from '@material-ui/core'
 import {ExpandMore, Edit, DeleteForever} from '@material-ui/icons';
-import {green, red} from '@material-ui/core/colors'
+import {green, red} from '@material-ui/core/colors';
 
 class CustomExpansionPanel extends React.Component {
     render(){

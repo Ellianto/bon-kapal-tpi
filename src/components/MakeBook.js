@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactToPrint from 'react-to-print';
 
-import {getShipsMethod, getBooksMethod, addBookMethod, openBookMethod} from '../firebase'
+import {getShipsMethod, getBooksMethod, aggrBonMethod, openBookMethod} from '../firebase'
 import PrintableTable from './PrintableTable'
 
 import { Box, Grid, TextField, Button, Typography, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions} from '@material-ui/core';
@@ -11,9 +11,8 @@ export default class MakeBook extends React.Component {
         super(props);
 
         this.openBook = this.openBook.bind(this);
-        this.closeBook = this.closeBook.bind(this);
+        this.saveBook = this.saveBook.bind(this);
         this.printDate = this.printDate.bind(this);
-        this.formatDate = this.formatDate.bind(this);
         this.handleStringChange = this.handleStringChange.bind(this);
         this.handleDialogOpen = this.handleDialogOpen.bind(this);
         this.handleDialogClose = this.handleDialogClose.bind(this);
@@ -30,15 +29,23 @@ export default class MakeBook extends React.Component {
             shipName: '',
             shownShip: '',
             submitted: false,
+            isLoading : false,
         }
     }
 
     handleFirebaseErrors(err){
         console.error(err.code);
         this.props.openSnackBar(err.message);
+        this.setState({
+            isLoading : false,
+        });
     }
 
     componentDidMount() {
+        this.setState({
+            isLoading: true,
+        });
+
         this.props.showProgressBar();
 
         getShipsMethod({}).then(result => {
@@ -53,6 +60,7 @@ export default class MakeBook extends React.Component {
             this.setState({
                 shipList: shipList,
                 shipName: shipName,
+                isLoading : false,
             });
 
             this.props.closeProgressBar();
@@ -67,25 +75,11 @@ export default class MakeBook extends React.Component {
         return `${date}/${month}/${year}`;
     }
 
-    formatDate() {
-        const now = new Date();
-
-        let thisYear = now.getFullYear().toString();
-        let thisMonth = (now.getMonth() + 1).toString();
-        let thisDate = now.getDate().toString();
-
-        if (thisMonth.length === 1) {
-            thisMonth = '0' + thisMonth;
-        }
-
-        if (thisDate.length === 1) {
-            thisDate = '0' + thisDate;
-        }
-
-        return `${thisYear}${thisMonth}${thisDate}`;
-    }
-
     openBook(){
+        this.setState({
+            isLoading: true,
+        });
+
         this.props.showProgressBar();
 
         const bookArr = this.state.bookList;
@@ -110,23 +104,29 @@ export default class MakeBook extends React.Component {
                 shownShip: shipName,
                 submitted: true,
                 openDialog: false,
+                isLoading : false,
             });
 
             this.props.closeProgressBar();
         }).catch(this.handleFirebaseErrors);
     }
 
-    closeBook() {
+    saveBook(isSave) {
+        this.setState({
+            isLoading : true,
+        });
+
         this.props.showProgressBar();
 
         const shipName = this.state.shipName;
 
         const params = {
             shipName : shipName,
+            save : isSave,
         };
 
-        addBookMethod(params).then(result => {
-            let newState = {submitted : true};
+        aggrBonMethod(params).then(result => {
+            let newState = {submitted : true, isLoading : false};
             let newMessage = 'Tidak ada bon yang bisa di rekap!';
 
             if(!result.data.isEmpty){
@@ -137,9 +137,10 @@ export default class MakeBook extends React.Component {
                     redSum : result.data.expenseSum,
                     shownShip : shipName,
                     openDialog : false,
+                    isLoading : false,
                 };
 
-                newMessage = 'Tutup Buku Berhasil! Membuka buku baru...';
+                newMessage = isSave ? 'Tutup Buku Berhasil!' : 'Menampilkan Rekap Sementara';
             }
 
             this.setState(newState);
@@ -209,52 +210,57 @@ export default class MakeBook extends React.Component {
                                 }
                             </TextField>
                         </Grid>
-                        <Grid item xs={12} md={6}>
-                            <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleDialogOpen} disabled={this.state.shipName === '' ? true : false}>
-                                Tampilkan Buku-Buku
+                        <Grid item xs={12} md={4}>
+                            <Button fullWidth variant='contained' color='primary' size='large' onClick={this.handleDialogOpen} disabled={this.state.isLoading || this.state.shipName === '' ? true : false}>
+                                Tampilkan Buku-Buku Lama
                             </Button>
-                            <Dialog open={this.state.openDialog} onClose={this.handleDialogClose}>
-                                <DialogTitle>
-                                    Pilih Buku untuk Dibuka
-                                </DialogTitle>
-                                <DialogContent>
-                                    <DialogContentText>
-                                        Pilih buku yang ingin dibuka dari kapal {decodeURIComponent(this.state.shipName)}
-                                    </DialogContentText>
-                                    <TextField required fullWidth select id='bookSelect' name='bookId' variant='outlined'
-                                        helperText='Periode Buku yang ingin dibuka'
-                                        value={this.state.bookId}
-                                        onChange={this.handleStringChange}
-                                        style={{ width: '100%' }}
-                                        SelectProps={{
-                                            native: true,
-                                        }}
-                                    >
-                                        {
-                                            this.state.bookList.length === 0 ?
-                                                <option value=''> Belum ada buku untuk kapal ini </option>
-                                                :
-                                                this.state.bookList.map((book) => (
-                                                    <option value={book.endDate} key={book.endDate}>
-                                                        {`Periode ${this.printDate(book.endDate)}`}
-                                                    </option>
-                                                ))
-                                        }
-                                    </TextField>
-                                </DialogContent>
-                                <DialogActions>
-                                    <Button color='secondary' onClick={this.handleDialogClose}> Batal </Button>
-                                    <Button color='primary' onClick={this.openBook} disabled={this.state.bookId === '' ? true : false}> Tampilkan Buku </Button>
-                                </DialogActions>
-                            </Dialog>
                         </Grid>
-                        <Grid item xs={12} md={6}>
-                            <Button fullWidth variant='contained' color='primary' size='large' onClick={() => this.closeBook()} disabled={this.state.shipName === '' ? true : false}>
+                        <Grid item xs={12} md={4}>
+                            <Button fullWidth variant='contained' color='primary' size='large' onClick={() => this.saveBook(true)} disabled={this.state.isLoading || this.state.shipName === '' ? true : false}>
                                 Tutup Buku
+                            </Button>
+                        </Grid>
+                        <Grid item xs={12} md={4}>
+                            <Button fullWidth variant='contained' color='primary' size='large' onClick={() => this.saveBook(false)} disabled={this.state.isLoading || this.state.shipName === '' ? true : false}>
+                                Tampilkan Rekap Sementara
                             </Button>
                         </Grid>
                     </Grid>
                 </Box>
+                <Dialog open={this.state.openDialog} onClose={this.handleDialogClose}>
+                    <DialogTitle>
+                        Pilih Buku untuk Dibuka
+                    </DialogTitle>
+                    <DialogContent>
+                        <DialogContentText>
+                            Pilih buku yang ingin dibuka dari kapal {decodeURIComponent(this.state.shipName)}
+                        </DialogContentText>
+                        <TextField required fullWidth select id='bookSelect' name='bookId' variant='outlined'
+                            helperText='Periode Buku yang ingin dibuka'
+                            value={this.state.bookId}
+                            onChange={this.handleStringChange}
+                            style={{ width: '100%' }}
+                            SelectProps={{
+                                native: true,
+                            }}
+                        >
+                            {
+                                this.state.bookList.length === 0 ?
+                                    <option value=''> Belum ada buku untuk kapal ini </option>
+                                    :
+                                    this.state.bookList.map((book) => (
+                                        <option value={book.endDate} key={book.endDate}>
+                                            {`Periode ${this.printDate(book.endDate)}`}
+                                        </option>
+                                    ))
+                            }
+                        </TextField>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button color='secondary' onClick={this.handleDialogClose} disabled={this.state.isLoading ? true : false}> Batal </Button>
+                        <Button color='primary' onClick={this.openBook} disabled={this.state.isLoading || this.state.bookId === '' ? true : false}> Tampilkan Buku </Button>
+                    </DialogActions>
+                </Dialog>
                 <Box m={4} p={4}>
                     {
                         this.state.submitted ?
@@ -265,12 +271,11 @@ export default class MakeBook extends React.Component {
                                     <React.Fragment>
                                         <ReactToPrint
                                             content={() => this.componentRef}
-                                            trigger={() => <Button fullWidth variant='contained' color='primary' size='large' style={{ marginBottom: 8 }}> Cetak Buku </Button>}
+                                            trigger={() => <Button fullWidth variant='contained' color='primary' size='large' style={{ marginBottom: 8 }} disabled ={this.state.isLoading ? true : false}> Cetak Buku </Button>}
                                         />
                                         <PrintableTable
                                             ref={el => (this.componentRef = el)}
                                             printDate={this.printDate}
-                                            formatDate={this.formatDate}
                                             formatCurrency={this.formatCurrency}
                                             greenSum={this.state.greenSum}
                                             redSum={this.state.redSum}
