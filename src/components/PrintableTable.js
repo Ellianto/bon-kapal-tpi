@@ -68,10 +68,10 @@ export default class PrintableTable extends React.Component {
                 <Table size='small'>
                     <TableHead>
                         <TableRow>
-                            <TableCell align='center' width='10%'> <Typography variant='body1'> <b> TANGGAL     </b> </Typography> </TableCell>
-                            <TableCell align='center' width='40%'> <Typography variant='body1'> <b> KETERANGAN  </b> </Typography> </TableCell>
-                            <TableCell align='center' width='25%'> <Typography variant='body1'> <b> DEBIT       </b> </Typography> </TableCell>
-                            <TableCell align='center' width='25%'> <Typography variant='body1'> <b> KREDIT      </b> </Typography> </TableCell>
+                            <TableCell align='left' width='10%'> <Typography variant='body1'> <b> TANGGAL     </b> </Typography> </TableCell>
+                            <TableCell align='left' width='40%'> <Typography variant='body1'> <b> KETERANGAN  </b> </Typography> </TableCell>
+                            <TableCell align='left' width='25%'> <Typography variant='body1'> <b> DEBIT       </b> </Typography> </TableCell>
+                            <TableCell align='left' width='25%'> <Typography variant='body1'> <b> KREDIT      </b> </Typography> </TableCell>
                         </TableRow>
                     </TableHead>
 
@@ -81,27 +81,27 @@ export default class PrintableTable extends React.Component {
                                 return value.map((doc) => {
                                     return (
                                         <TableRow key={doc.docId}>
-                                            <TableCell align='center'> {this.props.printDate(key)} </TableCell>
-                                            <TableCell align='center'> {decodeURIComponent(doc.info)} </TableCell>
-                                            <TableCell align='right'>  {doc.type === 'i' ? this.formatCurrency(doc.amount) : '-'} </TableCell>
-                                            <TableCell align='right'>  {doc.type === 'o' ? this.formatCurrency(doc.amount) : '-'} </TableCell>
+                                            <TableCell align='left'> {this.props.printDate(key)} </TableCell>
+                                            <TableCell align='left'> {decodeURIComponent(doc.info)} </TableCell>
+                                            <TableCell align='left'>  {doc.type === 'i' ? this.formatCurrency(doc.amount) : '-'} </TableCell>
+                                            <TableCell align='left'>  {doc.type === 'o' ? this.formatCurrency(doc.amount) : '-'} </TableCell>
                                         </TableRow>
                                     );
                                 });
                             })
                         }
                         <TableRow>
-                            <TableCell align='center' colSpan={2}>
+                            <TableCell align='left' colSpan={2}>
                                 <Typography variant='body1'>
                                     <b> Total </b>
                                 </Typography>
                             </TableCell>
-                            <TableCell align='right'>
+                            <TableCell align='left'>
                                 <Typography variant='body1' style={{ color: green[700] }}>
                                     <b> {this.formatCurrency(this.props.greenSum)} </b>
                                 </Typography>
                             </TableCell>
-                            <TableCell align='right'>
+                            <TableCell align='left'>
                                 <Typography variant='body1' style={{ color: red['A700'] }}>
                                     <b> {this.formatCurrency(this.props.redSum)} </b>
                                 </Typography>

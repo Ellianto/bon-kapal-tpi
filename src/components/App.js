@@ -1,5 +1,5 @@
 import React from 'react';
-import {Redirect, Route, Switch, withRouter } from 'react-router-dom';
+import { Redirect, Route, Switch, withRouter } from 'react-router-dom';
 
 import { Box, Button, Snackbar, SnackbarContent, Fade, LinearProgress, AppBar, Toolbar, IconButton, Typography } from '@material-ui/core';
 import { Home, MobileOff } from '@material-ui/icons';
