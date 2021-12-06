@@ -2,6 +2,8 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 
+const { FieldPath } = require('@google-cloud/firestore');
+
 const serviceAccount = require("./bon-kapal-firebase-adminsdk-ymrhu-be80b70919.json");
 
 admin.initializeApp({
@@ -212,8 +214,8 @@ exports.aggrBon = functions.region('asia-east2').runWith(lightRuntime).https.onC
                 transaction.set(shipRef, shipData);
                 return [[], [], [], 0, 0];
             }
-            const iQuery = bonRef.firestore.collectionGroup('i');
-            const oQuery = bonRef.firestore.collectionGroup('o');
+            const iQuery = bonRef.firestore.collectionGroup('i').orderBy(FieldPath.documentId()).startAt(shipRef.path).endAt(shipRef.path + "\uf8ff");
+            const oQuery = bonRef.firestore.collectionGroup('o').orderBy(FieldPath.documentId()).startAt(shipRef.path).endAt(shipRef.path + "\uf8ff");
             const [iDocs, oDocs] = await Promise.all([
                 iQuery.get(),
                 oQuery.get(),
